@@ -357,7 +357,7 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") { endHotkeyCapture(); return; }
   const combo = comboFromEvent(e);
   if (!combo) {
-    setSettingsStatus("include a modifier вЂ” Ctrl, Alt or Shift", true);
+    setSettingsStatus("include a modifier — Ctrl, Alt or Shift", true);
     return;
   }
   endHotkeyCapture();
@@ -1638,8 +1638,8 @@ dragBar.addEventListener("mouseleave", () => {
   collapseNotify();
 });
 
-const DRAG_TIP_IDLE = "Drag to move В· Double-click to center В· Right-click to pin";
-const DRAG_TIP_PINNED = "Position pinned вЂ” right-click to unpin";
+const DRAG_TIP_IDLE = "Drag to move · Double-click to center · Right-click to pin";
+const DRAG_TIP_PINNED = "Position pinned — right-click to unpin";
 
 function syncDragTip() {
   if (dragBar.classList.contains("notify")) return;
@@ -1662,7 +1662,7 @@ dragBar.addEventListener("contextmenu", (e) => {
         showNotify("Position pinned", {
           type: "warn",
           tag: "pin",
-          detail: "window stays here on next summons вЂ” right-click to unpin",
+          detail: "window stays here on next summons — right-click to unpin",
         });
       } else {
         showNotify("Position unpinned", { type: "info", tag: "pin", detail: "window recenters on next summons" });
@@ -1787,12 +1787,12 @@ async function togglePin(btn) {
 const placeholderWords = [];
 const fixedWords = [
   "type to search",
-  "!help вЂ” all commands",
-  "tab вЂ” autocomplete",
+  "!help — all commands",
+  "tab — autocomplete",
   "right-click for actions",
-  "shift+enter вЂ” copy path",
-  "ctrl+shift+enter вЂ” run as admin",
-  "#ff0000 вЂ” color picker",
+  "shift+enter — copy path",
+  "ctrl+shift+enter — run as admin",
+  "#ff0000 — color picker",
   "100 usd to eur",
   "!weather paris",
   "right-click the bar to pin position",
@@ -1954,6 +1954,10 @@ clearBtn.addEventListener("click", (e) => {
   clearBtn.classList.remove("visible");
   clearGhost();
   performSearch("");
+  if (placeholderTimer) clearTimeout(placeholderTimer);
+  placeholderDeleting = false;
+  placeholderCharIndex = 0;
+  placeholderTimer = setTimeout(animatePlaceholder, 500);
   searchInput.focus();
 });
 
@@ -1999,7 +2003,7 @@ async function performSearch(query) {
     const indexingNow = indexingActive && response.indexed === 0;
     if (!isEmpty && !hasResults) {
       emptyState.querySelector("span").textContent = indexingNow
-        ? "Indexing files вЂ” search will be ready in a moment"
+        ? "Indexing files — search will be ready in a moment"
         : "No results found";
     }
     
@@ -2246,6 +2250,17 @@ searchInput.addEventListener("input", () => {
   clearGhost();
   updateGhost();
   clearTimeout(debounceTimer);
+  
+  if (!hasText) {
+    if (placeholderTimer) clearTimeout(placeholderTimer);
+    placeholderDeleting = false;
+    placeholderCharIndex = 0;
+    placeholderTimer = setTimeout(animatePlaceholder, 500);
+  } else {
+    if (placeholderTimer) clearTimeout(placeholderTimer);
+    placeholderTimer = null;
+    searchInput.placeholder = "";
+  }
   
   if (settingsBtn.classList.contains("open")) {
     filterSettings(searchInput.value);
