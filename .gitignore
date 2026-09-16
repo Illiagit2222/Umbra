@@ -3,6 +3,7 @@ src-tauri/target/
 src-tauri/gen/
 node_modules/
 *.exe
+*.pdb
 
 # Logs
 *.log
@@ -19,5 +20,6 @@ Thumbs.db
 .claude/
 
 # Temporary
-tmp.txt
+tmp*
 clickLanguage
+archive/

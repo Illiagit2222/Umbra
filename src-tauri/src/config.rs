@@ -112,6 +112,11 @@ pub struct ThemeConfig {
     pub border_w: f64,
     #[serde(default = "default_border_pos")]
     pub border_pos: String,
+    
+    #[serde(default)]
+    pub light_mode: bool,
+    #[serde(default)]
+    pub custom_theme: Option<String>,
 }
 
 fn default_border_on() -> bool {
@@ -123,7 +128,6 @@ fn default_border_w() -> f64 {
 }
 
 fn default_border_pos() -> String {
-    
     "inner".into()
 }
 
@@ -141,6 +145,8 @@ impl Default for ThemeConfig {
             border_on: default_border_on(),
             border_w: default_border_w(),
             border_pos: default_border_pos(),
+            light_mode: false,
+            custom_theme: None,
         }
     }
 }
@@ -255,7 +261,7 @@ pub fn get_language() -> String {
     let guard = STATE.lock().unwrap();
     let lang = &guard.as_ref().unwrap().config.language;
     match lang.as_str() {
-        "en" | "ru" | "ja" => lang.clone(),
+        "en" | "ru" | "ja" | "de" => lang.clone(),
         _ => "en".to_string(),
     }
 }
@@ -267,6 +273,7 @@ pub fn set_language(lang: String) -> String {
     let clean = match lang.to_lowercase().as_str() {
         "ru" => "ru".to_string(),
         "ja" => "ja".to_string(),
+        "de" => "de".to_string(),
         _ => "en".to_string(),
     };
     state.config.language = clean.clone();

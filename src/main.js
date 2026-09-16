@@ -21,11 +21,14 @@ const pinsSection = document.getElementById("pins-section");
 const specialSection = document.getElementById("special-section");
 const specialContent = document.getElementById("special-content");
 const resultsContainer = document.getElementById("results-container");
+const resultsWrapper = document.getElementById("results-wrapper");
 const emptyState = document.getElementById("empty-state");
 
 let scrollFadeTimer = null;
 function syncScrollFade() {
-  resultsContainer.classList.toggle("scrolled", resultsContainer.scrollTop > 0);
+  const isScrolled = resultsContainer.scrollTop > 1;
+  resultsContainer.classList.toggle("scrolled", isScrolled);
+  resultsWrapper.classList.toggle("is-scrolled", isScrolled);
   resultsContainer.classList.add("scrolling");
   clearTimeout(scrollFadeTimer);
   scrollFadeTimer = setTimeout(() => {
@@ -50,7 +53,7 @@ function wheelTick() {
   const cur = resultsContainer.scrollTop;
   const diff = wheelTarget - cur;
   
-  if (Math.abs(diff) < 0.5) {
+  if (Math.abs(diff) < 1.5) {
     resultsContainer.scrollTop = wheelTarget;
     wheelTarget = null;
     wheelRaf = null;
@@ -337,7 +340,7 @@ settingHotkeyRow.addEventListener("click", (e) => {
   if (hotkeyCapturing) return;
   hotkeyCapturing = true;
   settingHotkeyRow.classList.add("capturing");
-  settingHotkeyValue.textContent = "press keys…";
+  settingHotkeyValue.textContent = "press keysвЂ¦";
   setSettingsStatus("");
 });
 
@@ -354,7 +357,7 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") { endHotkeyCapture(); return; }
   const combo = comboFromEvent(e);
   if (!combo) {
-    setSettingsStatus("include a modifier — Ctrl, Alt or Shift", true);
+    setSettingsStatus("include a modifier вЂ” Ctrl, Alt or Shift", true);
     return;
   }
   endHotkeyCapture();
@@ -404,7 +407,7 @@ settingReindex.addEventListener("click", async (e) => {
     indexingActive = true;
     indexRan = true;
     indexSpinner.classList.add("visible");
-    if (settingIndexed) settingIndexed.textContent = "indexing…";
+    if (settingIndexed) settingIndexed.textContent = "indexingвЂ¦";
     await invoke("reindex");
     toggleSettings();
     showNotify("Rebuilding index", { type: "info", detail: "search stays available while it runs" });
@@ -675,6 +678,22 @@ function hexWithAlpha(hex, alpha) {
 function applyTheme() {
   if (!theme) return;
   const root = document.documentElement;
+
+  const customStyleEl = document.getElementById("custom-theme-style");
+  if (theme.customTheme && window.__customThemes) {
+    const custom = window.__customThemes.find(t => t.name === theme.customTheme);
+    if (custom) {
+      customStyleEl.textContent = custom.css;
+      document.body.classList.add("custom-theme-active");
+    } else {
+      customStyleEl.textContent = "";
+      document.body.classList.remove("custom-theme-active");
+    }
+  } else {
+    customStyleEl.textContent = "";
+    document.body.classList.remove("custom-theme-active");
+  }
+
   root.style.setProperty("--accent", theme.accent);
   root.style.setProperty("--card-bg", hexWithAlpha(theme.cardBg, theme.cardAlpha));
   root.style.setProperty("--text", theme.text);
@@ -703,8 +722,17 @@ function markActiveSwatches() {
   const isPreset = THEME_PRESETS.find(
     p => p.cardBg === theme.cardBg && p.accent === theme.accent && p.alpha === theme.cardAlpha
   );
-  themePresetsEl.querySelectorAll(".swatch").forEach((el, i) =>
-    el.classList.toggle("active", !!(isPreset && THEME_PRESETS[i].name === isPreset.name)));
+  
+  themePresetsEl.querySelectorAll(".swatch").forEach((el) => {
+    let isActive = false;
+    if (theme.customTheme) {
+      if (el.dataset.tip === "Custom: " + theme.customTheme) isActive = true;
+    } else {
+      if (isPreset && el.dataset.tip === isPreset.name) isActive = true;
+    }
+    el.classList.toggle("active", isActive);
+  });
+
   accentSwatchesEl.querySelectorAll(".swatch").forEach((el) =>
     el.classList.toggle("active", el.dataset.color === theme.accent));
   bgSwatchesEl.querySelectorAll(".swatch").forEach((el) =>
@@ -743,18 +771,75 @@ buildSwatches(bgSwatchesEl, BG_SWATCHES, (c) => {
   saveTheme();
 });
 
-THEME_PRESETS.forEach((p) => {
-  const b = document.createElement("button");
-  b.className = "swatch";
-  b.style.background = p.accent;
-  b.dataset.tip = p.name;
-  b.addEventListener("click", () => {
-    theme = { ...theme, cardBg: p.cardBg, accent: p.accent, alpha: p.alpha, text: p.text };
-    saveTheme();
-    b.blur();
+function renderThemePresets(customThemes) {
+  themePresetsEl.innerHTML = "";
+  THEME_PRESETS.forEach((p) => {
+    const b = document.createElement("button");
+    b.className = "swatch";
+    b.style.background = p.accent;
+    b.dataset.tip = p.name;
+    b.addEventListener("click", () => {
+      theme = { ...theme, cardBg: p.cardBg, accent: p.accent, alpha: p.alpha, text: p.text, customTheme: null };
+      saveTheme();
+      b.blur();
+    });
+    themePresetsEl.appendChild(b);
   });
-  themePresetsEl.appendChild(b);
-});
+
+  if (customThemes) {
+    customThemes.forEach((t) => {
+      const b = document.createElement("button");
+      b.className = "swatch";
+      b.style.background = "var(--text-dim)";
+      b.dataset.tip = "Custom: " + t.name;
+      b.addEventListener("click", () => {
+        theme = { ...theme, customTheme: t.name };
+        saveTheme();
+        b.blur();
+      });
+      themePresetsEl.appendChild(b);
+    });
+  }
+
+  const addBtn = document.createElement("button");
+  addBtn.className = "swatch";
+  addBtn.style.background = "transparent";
+  addBtn.style.border = "1px dashed var(--text-dim)";
+  addBtn.style.color = "var(--text-dim)";
+  addBtn.textContent = "+";
+  addBtn.style.display = "flex";
+  addBtn.style.alignItems = "center";
+  addBtn.style.justifyContent = "center";
+  addBtn.dataset.tip = "Open themes folder";
+  addBtn.addEventListener("click", () => {
+    invoke("open_themes_folder").catch(console.error);
+    addBtn.blur();
+  });
+  themePresetsEl.appendChild(addBtn);
+
+  markActiveSwatches();
+}
+
+let _lastCustomThemesStr = "";
+
+async function loadThemes() {
+  try {
+    const customThemes = await invoke("get_custom_themes");
+    customThemes.sort((a, b) => a.name.localeCompare(b.name));
+    
+    const currentStr = JSON.stringify(customThemes);
+    if (currentStr !== _lastCustomThemesStr) {
+      _lastCustomThemesStr = currentStr;
+      window.__customThemes = customThemes;
+      renderThemePresets(customThemes);
+      applyTheme();
+    }
+  } catch (e) {
+    console.error("Failed to fetch custom themes", e);
+  }
+}
+
+// loadThemes interval moved to loadTheme()
 
 const clamp01 = (x) => Math.max(0, Math.min(1, x));
 
@@ -1013,6 +1098,8 @@ async function loadTheme() {
   if (theme) return;
   try {
     theme = await invoke("get_theme");
+    loadThemes();
+    setInterval(loadThemes, 1000);
     applyTheme();
   } catch (e) {
     console.warn("theme load failed:", e);
@@ -1050,16 +1137,19 @@ function renderAlignGrid() {
   ALIGN_GRID.forEach((row) => {
     row.forEach((code) => {
       const b = document.createElement("button");
-      b.className = "align-cell" + (placement.align === code ? " active" : "");
+      b.className = "align-cell";
+      b.dataset.code = code;
       b.dataset.tip = `${ALIGN_TIPS[code[0]]} ${ALIGN_TIPS[code[1]]}`;
       b.addEventListener("click", () => {
         placement.align = code;
+        updatePlacementUI();
         savePlacement();
         b.blur();
       });
       alignGridEl.appendChild(b);
     });
   });
+  updatePlacementUI();
 }
 
 function renderMonitorButtons(monitors) {
@@ -1067,11 +1157,13 @@ function renderMonitorButtons(monitors) {
   monitorButtonsEl.innerHTML = "";
   const mk = (label, monIndex, tip) => {
     const b = document.createElement("button");
-    b.className = "align-cell monitor-btn" + (placement.monitor === monIndex ? " active" : "");
+    b.className = "seg-btn";
+    b.dataset.monIndex = monIndex;
     b.textContent = label;
     if (tip) b.dataset.tip = tip;
     b.addEventListener("click", () => {
       placement.monitor = monIndex;
+      updatePlacementUI();
       savePlacement();
       b.blur();
     });
@@ -1081,6 +1173,16 @@ function renderMonitorButtons(monitors) {
   monitors.forEach((m) => {
     mk(m.primary ? `${m.index + 1}*` : String(m.index + 1), m.index,
       `${m.width}×${m.height}${m.primary ? " · primary" : ""}`);
+  });
+  updatePlacementUI();
+}
+
+function updatePlacementUI() {
+  alignGridEl.querySelectorAll(".align-cell").forEach((b) => {
+    b.classList.toggle("active", placement.align === b.dataset.code);
+  });
+  monitorButtonsEl.querySelectorAll(".seg-btn").forEach((b) => {
+    b.classList.toggle("active", placement.monitor === parseInt(b.dataset.monIndex));
   });
 }
 
@@ -1102,8 +1204,7 @@ function savePlacement() {
   invoke("set_placement", { align: placement.align, monitor: placement.monitor })
     .then((p) => {
       placement = p;
-      renderAlignGrid();
-      renderMonitorButtons(lastMonitors);
+      updatePlacementUI();
     })
     .catch((err) => setSettingsStatus(String(err), true));
 }
@@ -1274,119 +1375,48 @@ function renderPins(pins) {
   updateSelectableItems();
   pins.forEach((pin, i) => {
     const el = createResultItem({ ...pin, pinned: true }, i, lastQuery);
-    el.setAttribute("draggable", "true");
-    el.style.webkitUserDrag = "element";
     pinsList.appendChild(el);
   });
   
 }
 
-let draggedPinEl = null;
-let draggedPinPath = null;
-
-function getDragAfterElement(container, y) {
-  const els = [...container.querySelectorAll(".result-item:not(.dragging)")];
-  let closest = null;
-  let closestOffset = Number.NEGATIVE_INFINITY;
-  for (const el of els) {
-    const box = el.getBoundingClientRect();
-    const offset = y - box.top - box.height / 2;
-    if (offset < 0 && offset > closestOffset) {
-      closestOffset = offset;
-      closest = el;
+Sortable.create(pinsList, {
+  animation: 250,
+  easing: "cubic-bezier(0.25, 1, 0.5, 1)",
+  ghostClass: "sortable-ghost",
+  dragClass: "sortable-drag",
+  delay: 50,
+  delayOnTouchOnly: true,
+  filter: ".result-pin",
+  preventOnFilter: false,
+  onStart: function () {
+    document.body.classList.add("is-dragging-pin");
+  },
+  onEnd: function (evt) {
+    document.body.classList.remove("is-dragging-pin");
+    if (lastQuery.trim() !== "") return;
+    
+    const newOrder = Array.from(pinsList.children)
+      .map(el => el.querySelector(".result-pin")?.dataset.path || el.dataset.path)
+      .filter(Boolean);
+      
+    console.log("[pins dnd] drop", newOrder);
+    const map = new Map(currentPins.map(p => [p.path, p]));
+    const reordered = newOrder.map(p => map.get(p)).filter(Boolean);
+    if (reordered.length === currentPins.length) {
+      currentPins = reordered;
+      pinsList.querySelectorAll(".result-item").forEach((el, i) => { el.dataset.index = i; });
+      updateSelectableItems();
+      updateSelection();
+      updateCustomScrollbar();
+      invoke("reorder_pins", { orderedPaths: newOrder }).then(ok => {
+        if (ok) showToast("Order saved");
+        else showToast("Couldn't save order", true);
+      }).catch(err => { console.warn("reorder failed", err); showToast("Save error", true); });
+    } else {
+      showToast("Reorder failed", true);
     }
   }
-  return closest;
-}
-
-pinsList.addEventListener("dragstart", (e) => {
-  const item = e.target.closest(".result-item");
-  if (!item || !pinsList.contains(item)) return;
-  if (lastQuery.trim() !== "") { e.preventDefault(); return; }
-  draggedPinEl = item;
-  draggedPinPath = item.querySelector(".result-pin")?.dataset.path || item.dataset.path || "";
-  item.classList.add("dragging");
-  pinsList.classList.add("drag-active");
-  e.dataTransfer.effectAllowed = "move";
-  try { e.dataTransfer.setData("text/plain", draggedPinPath); } catch {}
-  
-  try {
-    const crt = item.cloneNode(true);
-    crt.style.position = "absolute";
-    crt.style.top = "-9999px";
-    crt.style.opacity = "0.8";
-    document.body.appendChild(crt);
-    e.dataTransfer.setDragImage(crt, 20, 20);
-    setTimeout(() => crt.remove(), 0);
-  } catch {}
-  console.log("[pins dnd] dragstart", draggedPinPath);
-});
-
-pinsList.addEventListener("dragend", () => {
-  if (draggedPinEl) draggedPinEl.classList.remove("dragging");
-  draggedPinEl = null;
-  draggedPinPath = null;
-  pinsList.classList.remove("drag-active");
-  pinsList.querySelectorAll(".drag-over").forEach(el => el.classList.remove("drag-over"));
-  console.log("[pins dnd] dragend");
-});
-
-pinsList.addEventListener("dragover", (e) => {
-  if (!draggedPinEl) return;
-  if (lastQuery.trim() !== "") return;
-  e.preventDefault(); 
-  const afterEl = getDragAfterElement(pinsList, e.clientY);
-  pinsList.querySelectorAll(".drag-over").forEach(el => el.classList.remove("drag-over"));
-  if (afterEl) afterEl.classList.add("drag-over");
-  else if (pinsList.lastElementChild && pinsList.lastElementChild !== draggedPinEl) {
-    pinsList.lastElementChild.classList.add("drag-over");
-  }
-  e.dataTransfer.dropEffect = "move";
-});
-
-pinsList.addEventListener("dragenter", (e) => {
-  if (!draggedPinEl) return;
-  e.preventDefault();
-});
-
-pinsList.addEventListener("dragleave", (e) => {
-  if (!pinsList.contains(e.relatedTarget)) {
-    pinsList.querySelectorAll(".drag-over").forEach(el => el.classList.remove("drag-over"));
-  }
-});
-
-pinsList.addEventListener("drop", (e) => {
-  e.preventDefault();
-  if (!draggedPinEl) return;
-  if (lastQuery.trim() !== "") return;
-  const afterEl = getDragAfterElement(pinsList, e.clientY);
-  if (afterEl == null) pinsList.appendChild(draggedPinEl);
-  else pinsList.insertBefore(draggedPinEl, afterEl);
-  pinsList.querySelectorAll(".drag-over").forEach(el => el.classList.remove("drag-over"));
-  pinsList.classList.remove("drag-active");
-  
-  const newOrder = Array.from(pinsList.children)
-    .map(el => el.querySelector(".result-pin")?.dataset.path || el.dataset.path)
-    .filter(Boolean);
-  console.log("[pins dnd] drop", newOrder);
-  const map = new Map(currentPins.map(p => [p.path, p]));
-  const reordered = newOrder.map(p => map.get(p)).filter(Boolean);
-  if (reordered.length === currentPins.length) {
-    currentPins = reordered;
-    pinsList.querySelectorAll(".result-item").forEach((el, i) => { el.dataset.index = i; });
-    updateSelectableItems();
-    updateSelection();
-    updateCustomScrollbar();
-    invoke("reorder_pins", { orderedPaths: newOrder }).then(ok => {
-      if (ok) showToast("Order saved");
-      else showToast("Couldn't save order", true);
-    }).catch(err => { console.warn("reorder failed", err); showToast("Save error", true); });
-  } else {
-    showToast("Reorder failed", true);
-  }
-  if (draggedPinEl) draggedPinEl.classList.remove("dragging");
-  draggedPinEl = null;
-  draggedPinPath = null;
 });
 
 function applyIconToElement(container, index, iconSrc) {
@@ -1480,32 +1510,6 @@ function updateGhost() {
   } else {
     clearGhost();
   }
-}
-
-const caret = document.getElementById("caret");
-const caretMirror = document.getElementById("caret-mirror");
-let caretIdleTimer = null;
-function markCaretTyping() {
-  caret.classList.add("typing");
-  caret.classList.remove("idle");
-  clearTimeout(caretIdleTimer);
-  caretIdleTimer = setTimeout(() => {
-    caret.classList.remove("typing");
-    if (document.activeElement === searchInput) caret.classList.add("idle");
-  }, 900);
-}
-function updateCaret() {
-  const before = searchInput.value.slice(0, searchInput.selectionStart);
-  caretMirror.textContent = before;
-  caret.style.left = Math.round(caretMirror.offsetWidth) + "px";
-  const focused = document.activeElement === searchInput;
-  caret.classList.toggle("visible", focused);
-  if (!focused) {
-    caret.classList.remove("typing", "idle");
-    clearTimeout(caretIdleTimer);
-    return;
-  }
-  markCaretTyping();
 }
 
 async function launchItem(path) {
@@ -1634,8 +1638,8 @@ dragBar.addEventListener("mouseleave", () => {
   collapseNotify();
 });
 
-const DRAG_TIP_IDLE = "Drag to move · Double-click to center · Right-click to pin";
-const DRAG_TIP_PINNED = "Position pinned — right-click to unpin";
+const DRAG_TIP_IDLE = "Drag to move В· Double-click to center В· Right-click to pin";
+const DRAG_TIP_PINNED = "Position pinned вЂ” right-click to unpin";
 
 function syncDragTip() {
   if (dragBar.classList.contains("notify")) return;
@@ -1658,7 +1662,7 @@ dragBar.addEventListener("contextmenu", (e) => {
         showNotify("Position pinned", {
           type: "warn",
           tag: "pin",
-          detail: "window stays here on next summons — right-click to unpin",
+          detail: "window stays here on next summons вЂ” right-click to unpin",
         });
       } else {
         showNotify("Position unpinned", { type: "info", tag: "pin", detail: "window recenters on next summons" });
@@ -1783,12 +1787,12 @@ async function togglePin(btn) {
 const placeholderWords = [];
 const fixedWords = [
   "type to search",
-  "!help — all commands",
-  "tab — autocomplete",
+  "!help вЂ” all commands",
+  "tab вЂ” autocomplete",
   "right-click for actions",
-  "shift+enter — copy path",
-  "ctrl+shift+enter — run as admin",
-  "#ff0000 — color picker",
+  "shift+enter вЂ” copy path",
+  "ctrl+shift+enter вЂ” run as admin",
+  "#ff0000 вЂ” color picker",
   "100 usd to eur",
   "!weather paris",
   "right-click the bar to pin position",
@@ -1829,6 +1833,15 @@ function animatePlaceholder() {
     placeholderTimer = setTimeout(animatePlaceholder, 50);
   }
 }
+
+document.addEventListener("mousemove", (e) => {
+  if (document.body.classList.contains("is-dragging-pin")) return;
+  const item = e.target.closest(".result-item");
+  if (item && !item.classList.contains("selected")) {
+    selectedIndex = parseInt(item.dataset.index, 10);
+    updateSelection();
+  }
+});
 
 document.addEventListener("contextmenu", (e) => {
   const resultItem = e.target.closest(".result-item");
@@ -1906,7 +1919,7 @@ let indexRan = false;
 let idxPct = 0;
 
 function syncIndexTip(active) {
-  indexSpinner.dataset.tip = active ? `Indexing… ${idxPct}%` : "Index ready";
+  indexSpinner.dataset.tip = active ? `IndexingвЂ¦ ${idxPct}%` : "Index ready";
 }
 
 listen("index-progress", (event) => {
@@ -1986,7 +1999,7 @@ async function performSearch(query) {
     const indexingNow = indexingActive && response.indexed === 0;
     if (!isEmpty && !hasResults) {
       emptyState.querySelector("span").textContent = indexingNow
-        ? "Indexing files — search will be ready in a moment"
+        ? "Indexing files вЂ” search will be ready in a moment"
         : "No results found";
     }
     
@@ -2007,7 +2020,7 @@ searchInput.addEventListener("keydown", (e) => {
     searchInput.value = ghostTyped.textContent + ghostRest.textContent;
     clearBtn.classList.add("visible");
     clearGhost();
-    updateCaret();
+    updateGhost();
     performSearch(searchInput.value);
     return;
   }
@@ -2026,7 +2039,11 @@ searchInput.addEventListener("keydown", (e) => {
   if (total === 0) {
     if (e.key === "Escape") {
       e.preventDefault();
-      hideWindow();
+      if (settingsBtn.classList.contains("open")) {
+        toggleSettings();
+      } else {
+        hideWindow();
+      }
     }
     return;
   }
@@ -2048,7 +2065,7 @@ searchInput.addEventListener("keydown", (e) => {
           searchInput.value = item.fill;
           clearBtn.classList.add("visible");
           clearGhost();
-          updateCaret();
+          updateGhost();
           searchInput.focus();
         }
         return;
@@ -2210,19 +2227,33 @@ document.addEventListener("pointerdown", (e) => {
   }
 });
 
+function filterSettings(query) {
+  const q = query.toLowerCase().trim();
+  const rows = settingsSection.querySelectorAll(".settings-row");
+  rows.forEach(row => {
+    const text = row.textContent.toLowerCase();
+    if (!q || text.includes(q)) {
+      row.style.display = "";
+    } else {
+      row.style.display = "none";
+    }
+  });
+}
+
 searchInput.addEventListener("input", () => {
   const hasText = searchInput.value.length > 0;
   clearBtn.classList.toggle("visible", hasText);
   clearGhost();
-  updateCaret();
+  updateGhost();
   clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(() => performSearch(searchInput.value), 100);
+  
+  if (settingsBtn.classList.contains("open")) {
+    filterSettings(searchInput.value);
+  } else {
+    debounceTimer = setTimeout(() => performSearch(searchInput.value), 100);
+  }
 });
 
-searchInput.addEventListener("keyup", updateCaret);
-searchInput.addEventListener("click", updateCaret);
-searchInput.addEventListener("focus", updateCaret);
-searchInput.addEventListener("blur", updateCaret);
 
 document.addEventListener("DOMContentLoaded", () => {
   loadTheme();
@@ -2247,7 +2278,7 @@ window.__TAURI__.event.listen("window-shown", async () => {
   pointerGuard = true;
   searchInput.value = "";
   clearGhost();
-  updateCaret();
+  updateGhost();
   clearBtn.classList.remove("visible");
   lastQuery = "";
   selectedIndex = -1;

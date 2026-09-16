@@ -178,6 +178,8 @@ fn main() {
             commands::get_available_drives,
             commands::get_disabled_drives,
             commands::set_drive_enabled,
+            commands::open_themes_folder,
+            commands::get_custom_themes,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

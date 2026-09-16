@@ -1,63 +1,68 @@
 <div align="center">
-  <h1>🌑 Umbra</h1>
-  <p><strong>A modern, lightning-fast, and highly customizable search launcher for Windows.</strong></p>
+  <img src="assets/banner_beta.png" alt="Umbra open beta test" width="100%">
 </div>
 
-<p align="center">
-  Built with <strong>Tauri</strong> and <strong>Rust</strong> for maximum performance, featuring a beautiful glassmorphic UI using Vanilla JS and CSS.
-</p>
+# Umbra
 
----
+A minimalist, highly customizable search launcher for Windows, built with Rust and Tauri.
 
-## ✨ Features
+[![Download Umbra](https://img.shields.io/badge/Download-Umbra_Beta-black?style=for-the-badge&logo=windows)](https://github.com/spectrvm1337/Umbra/releases/latest)
 
-- **🚀 Instant Search:** Find your apps, files, and folders blazingly fast.
-- **🎨 Beautiful & Customizable UI:** Adjust opacity, themes, accent colors, and glow effects in real-time. Features a detached-card design language with fluid micro-animations.
-- **🛠️ Built-in Tools:** Comes with a built-in calculator, color picker, weather checker, currency converter, and more.
-- **📌 Pin & Drag-and-Drop:** Pin your most used items and drag them directly out of the search window.
-- **⚡ Lightweight:** Built on Tauri with a Rust backend. Extremely low memory footprint and CPU usage.
-- **🌍 Web Search & Chat:** Seamless integration with web queries and built-in AI chat capabilities.
+## Features
 
-## 📥 Installation
+<div align="center">
+  <img src="assets/banner_search.png" alt="Instant search" width="100%">
+</div>
 
-1. Go to the [Releases](https://github.com/spectrvm1337/Umbra/releases) page.
-2. Download the latest `.exe` installer.
-3. Run the installer and launch **Umbra**.
-4. Use your configured hotkey (default: `Alt + Space`) to summon the search bar anywhere!
+**Instant Search**  
+Find applications, files, and folders across your system without delay. Fast indexing ensures your results are immediately available.
 
-## 💻 Development
+**Built-in Tools**  
+Integrated utilities including a calculator, color picker, dictionary, and seamless web search.
 
-Want to build Umbra from source or contribute?
+**Workflow Integration**  
+Pin frequently used items directly in the launcher. Drag and drop files straight from the search results to other applications.
+
+<div align="center">
+  <img src="assets/banner_settings.png" alt="Express it the way you like" width="100%">
+</div>
+
+**Deep Customization**  
+Adjust themes, accent colors, window scaling, and hotkeys. Umbra adapts to your visual preferences with a polished, fluid design system.
+
+**High Performance**  
+Powered by a native Rust backend. Minimal CPU and memory footprint, keeping your system fast.
+
+## Installation
+
+1. Navigate to the [Releases](https://github.com/spectrvm1337/Umbra/releases) page.
+2. Download the latest installer (`Umbra_x64-setup.exe`) or the portable executable (`umbra.exe`).
+3. Run the application. Use the default hotkey (`Alt + Space`) to summon the search interface.
+
+## Development
+
+Umbra is built with Node.js and Rust.
 
 ### Prerequisites
-- [Node.js](https://nodejs.org/)
-- [Rust](https://www.rust-lang.org/tools/install)
-- [Tauri Prerequisites for Windows](https://tauri.app/v1/guides/getting-started/prerequisites#windows)
 
-### Setup & Build
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/spectrvm1337/Umbra.git
-   cd Umbra
-   ```
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Run in development mode:
-   ```bash
-   npm run dev
-   ```
-4. Build the production executable:
-   ```bash
-   npm run build
-   ```
+- Node.js
+- Rust toolchain
+- Tauri prerequisites for Windows
 
-## 📜 License
+### Build Instructions
 
-This project is open-source and available under the [MIT License](LICENSE).
+```bash
+git clone https://github.com/spectrvm1337/Umbra.git
+cd Umbra
+npm install
 
----
-<div align="center">
-  <i>Created by <a href="https://github.com/spectrvm1337">Spectrvm</a></i>
-</div>
+# Run in development mode
+npm run tauri dev
+
+# Build for production
+npm run tauri build
+```
+
+## License
+
+Available under the [MIT License](LICENSE).

@@ -67,17 +67,34 @@ pub fn scores_snapshot() -> std::collections::HashMap<String, f64> {
         .collect()
 }
 
+static SAVE_PENDING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
 fn save_db(db: &FrecencyDb) {
-    if let Some(parent) = db.path.parent() {
-        let _ = fs::create_dir_all(parent);
+    if SAVE_PENDING.swap(true, std::sync::atomic::Ordering::SeqCst) {
+        return;
     }
-    if let Ok(json) = serde_json::to_string(&db.entries) {
-        let path = db.path.clone();
-        std::thread::spawn(move || {
+    let path = db.path.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_secs(1));
+        SAVE_PENDING.store(false, std::sync::atomic::Ordering::SeqCst);
+        
+        let json = {
+            let guard = DB.lock().unwrap();
+            if let Some(db_ref) = guard.as_ref() {
+                serde_json::to_string(&db_ref.entries).unwrap_or_default()
+            } else {
+                String::new()
+            }
+        };
+        
+        if !json.is_empty() {
+            if let Some(parent) = path.parent() {
+                let _ = fs::create_dir_all(parent);
+            }
             let _write_guard = WRITE_LOCK.lock().unwrap();
             let _ = fs::write(path, json);
-        });
-    }
+        }
+    });
 }
 
 fn chrono_timestamp() -> f64 {

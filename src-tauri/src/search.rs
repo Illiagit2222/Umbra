@@ -13,12 +13,13 @@ pub fn is_current(version: u32) -> bool {
     SEARCH_VERSION.load(Ordering::SeqCst) == version
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Default, serde::Serialize)]
 pub struct ScoreKey {
     pub tier: u32,
     pub primary: u32,
     pub frec_inv: u32,
     pub len: u32,
+    pub path_len: u32,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -221,7 +222,19 @@ fn match_score(
         4
     } else {
 
-        let max_dist = if q.chars().count() <= 4 { 1 } else { 2 };
+        let q_len = q.chars().count();
+        let max_dist = if q_len <= 3 {
+            0
+        } else if q_len <= 6 {
+            1
+        } else {
+            2
+        };
+
+        if max_dist == 0 {
+            return None;
+        }
+
         if std::time::Instant::now() > fuzzy_deadline {
             return None;
         }
@@ -249,7 +262,8 @@ fn match_score(
     let frec_inv = ((1000.0 - frec_score) * 10.0) as u32;
     
     let len = (e.name_lower.chars().count() as u32).min(9999);
-    Some(ScoreKey { tier, primary, frec_inv, len })
+    let path_len = (e.path.chars().count() as u32).min(9999);
+    Some(ScoreKey { tier, primary, frec_inv, len, path_len })
 }
 
 const MAX_RESULTS: usize = 30;
@@ -276,40 +290,39 @@ pub fn search_index(query: &str, version: u32) -> Vec<SearchResult> {
     let disabled_kinds = config::get_disabled_kinds();
     
     with_entries(|entries| {
-        let mut heap = std::collections::BinaryHeap::with_capacity(MAX_RESULTS + 1);
+        let mut picked: Vec<(ScoreKey, usize)> = entries
+            .par_iter()
+            .enumerate()
+            .filter(|(_, e)| !disabled_kinds.contains(&e.kind))
+            .filter_map(|(i, e)| {
+                match_score(e, &q, &variants, &frec, fuzzy_deadline).map(|score| (score, i))
+            })
+            .collect();
 
-        for (i, e) in entries.iter().enumerate() {
-            if i & 8191 == 0 && SEARCH_VERSION.load(Ordering::Relaxed) != version {
-                break;
-            }
-            if disabled_kinds.contains(&e.kind) {
-                continue;
-            }
-            if let Some(score) = match_score(e, &q, &variants, &frec, fuzzy_deadline) {
-                if heap.len() < MAX_RESULTS {
-                    heap.push(std::cmp::Reverse((score, i)));
-                } else if let Some(std::cmp::Reverse((worst, _))) = heap.peek() {
-                    if score < *worst {
-                        heap.pop();
-                        heap.push(std::cmp::Reverse((score, i)));
+        picked.sort_unstable();
+
+        let mut deduplicated = Vec::with_capacity(MAX_RESULTS);
+        let mut seen_apps = std::collections::HashSet::new();
+
+        for (score, i) in picked {
+            if let Some(e) = entries.get(i) {
+                if e.kind == crate::indexer::KIND_APP || e.kind == crate::indexer::KIND_SHORTCUT {
+                    if !seen_apps.insert(&e.name_lower) {
+                        continue;
                     }
+                }
+                
+                let mut r = crate::indexer::entry_to_result(e);
+                r.score = score;
+                deduplicated.push(r);
+
+                if deduplicated.len() >= MAX_RESULTS {
+                    break;
                 }
             }
         }
 
-        let mut picked: Vec<(ScoreKey, usize)> = heap.into_iter().map(|std::cmp::Reverse(x)| x).collect();
-        picked.sort_unstable();
-
-        picked
-            .into_iter()
-            .filter_map(|(score, i)| {
-                entries.get(i).map(|e| {
-                    let mut r = crate::indexer::entry_to_result(e);
-                    r.score = score;
-                    r
-                })
-            })
-            .collect()
+        deduplicated
     })
     .unwrap_or_default()
 }

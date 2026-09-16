@@ -8,6 +8,7 @@
   <meta http-equiv="Expires" content="0">
   <title>Spotlight Search</title>
   <link rel="stylesheet" href="styles.css">
+  <style id="custom-theme-style"></style>
 </head>
 <body>
   <div id="app-container">
@@ -28,8 +29,6 @@
       <div id="input-field">
         <div id="ghost" aria-hidden="true"><span id="ghost-typed"></span><span id="ghost-rest"></span></div>
         <input type="text" id="search-input" placeholder="" autocomplete="off" spellcheck="false">
-        <div id="caret" aria-hidden="true"></div>
-        <span id="caret-mirror" aria-hidden="true"></span>
       </div>
 
       <button id="clear-btn" data-i18n-tip="clearTip" data-tip="Clear">
@@ -76,6 +75,7 @@
               <div class="seg-row" id="language-seg">
                 <button class="seg-btn" data-lang="en">EN</button>
                 <button class="seg-btn" data-lang="ru">RU</button>
+                <button class="seg-btn" data-lang="de">DE</button>
                 <button class="seg-btn" data-lang="ja">JA</button>
               </div>
             </div>
@@ -97,7 +97,7 @@
 
             <div class="settings-row">
               <span class="settings-label" data-i18n="lblMonitor">Display Monitor</span>
-              <div class="swatch-row" id="monitor-buttons"></div>
+              <div class="seg-row" id="monitor-buttons"></div>
             </div>
 
             <div class="settings-row">
@@ -114,19 +114,19 @@
               <div class="swatch-row" id="theme-presets"></div>
             </div>
 
-            <div class="settings-row">
+            <div class="settings-row theme-dependent" id="row-accent">
               <span class="settings-label" data-i18n="lblAccent">Accent Color</span>
               <div class="swatch-row" id="accent-swatches"></div>
               <button id="accent-custom" class="swatch-custom" data-i18n-tip="customAccentTip" data-tip="Custom accent"></button>
             </div>
 
-            <div class="settings-row">
+            <div class="settings-row theme-dependent" id="row-bg">
               <span class="settings-label" data-i18n="lblBg">Background Color</span>
               <div class="swatch-row" id="bg-swatches"></div>
               <button id="bg-custom" class="swatch-custom" data-i18n-tip="customBgTip" data-tip="Custom background"></button>
             </div>
 
-            <div class="settings-row">
+            <div class="settings-row theme-dependent" id="row-opacity">
               <span class="settings-label" data-i18n="lblOpacity">Opacity</span>
               <div class="zoom-stepper">
                 <button id="setting-alpha-minus" class="stepper-btn">−</button>
@@ -135,7 +135,7 @@
               </div>
             </div>
 
-            <div class="settings-row">
+            <div class="settings-row theme-dependent" id="row-radius">
               <span class="settings-label" data-i18n="lblRadius">Corner Radius</span>
               <div class="zoom-stepper">
                 <button id="setting-radius-minus" class="stepper-btn">−</button>
@@ -250,6 +250,7 @@
 
   <script src="i18n.js?v=48"></script>
   <script src="special.js?v=48"></script>
+  <script src="sortable.min.js"></script>
   <script src="main.js?v=48"></script>
 </body>
 </html>

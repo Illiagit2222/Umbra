@@ -246,3 +246,51 @@ pub fn set_drive_enabled(drive: String, enabled: bool) -> Vec<String> {
     config::set_disabled_drives(drives);
     config::get_disabled_drives()
 }
+
+#[tauri::command]
+pub fn open_themes_folder(app: tauri::AppHandle) -> Result<(), String> {
+    let mut path = app.path().app_config_dir().map_err(|e| e.to_string())?;
+    path.push("themes");
+    if !path.exists() {
+        std::fs::create_dir_all(&path).map_err(|e| e.to_string())?;
+    }
+    std::process::Command::new("explorer")
+        .arg(path.to_string_lossy().as_ref())
+        .spawn()
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[derive(serde::Serialize)]
+pub struct CustomTheme {
+    pub name: String,
+    pub css: String,
+}
+
+#[tauri::command]
+pub fn get_custom_themes(app: tauri::AppHandle) -> Vec<CustomTheme> {
+    let mut themes = Vec::new();
+    if let Ok(mut path) = app.path().app_config_dir() {
+        path.push("themes");
+        if let Ok(entries) = std::fs::read_dir(path) {
+            for entry in entries.flatten() {
+                if let Ok(file_type) = entry.file_type() {
+                    if file_type.is_file() {
+                        let file_path = entry.path();
+                        if file_path.extension().and_then(|s| s.to_str()) == Some("css") {
+                            if let Some(name) = file_path.file_stem().and_then(|s| s.to_str()) {
+                                if let Ok(css) = std::fs::read_to_string(&file_path) {
+                                    themes.push(CustomTheme {
+                                        name: name.to_string(),
+                                        css,
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    themes
+}

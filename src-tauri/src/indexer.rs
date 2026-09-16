@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{OnceLock, RwLock};
 use std::thread;
 use tauri::Emitter;
-use walkdir::WalkDir;
+use jwalk::WalkDir;
 
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
@@ -98,7 +98,7 @@ fn kind_from_file(file_name: &str, is_dir: bool) -> u8 {
         "zip" | "rar" | "7z" | "tar" | "gz" | "bz2" => KIND_ARCHIVE,
         "js" | "ts" | "py" | "rs" | "c" | "cpp" | "h" | "java" | "go" => KIND_CODE,
         "html" | "css" | "json" | "xml" | "yaml" | "toml" => KIND_CODE,
-        "dll" | "sys" | "so" | "dylib" | "lib" | "a" | "pdb" | "bin" | "dat" | "db" | "sqlite" => KIND_SYSTEM,
+        "dll" | "sys" | "so" | "dylib" | "lib" | "a" | "pdb" | "bin" | "dat" | "db" | "sqlite" | "" => KIND_SYSTEM,
         _ => KIND_FILE,
     }
 }
@@ -352,7 +352,7 @@ fn index_start_menu(entries: &mut Vec<SearchEntry>) {
             continue;
         }
         for entry in WalkDir::new(base)
-            .max_depth(3)
+            .skip_hidden(false)
             .into_iter()
             .filter_map(|e| e.ok())
         {
@@ -622,12 +622,13 @@ fn index_drive(
 
     for entry in WalkDir::new(root)
         .follow_links(false)
+        .skip_hidden(false)
         .into_iter()
-        .filter_entry(|e| {
+        .filter_map(|e| e.ok())
+        .filter(|e| {
             let name = e.file_name().to_string_lossy().to_lowercase();
             !name.starts_with('.') && !skip_dirs.contains(name.as_str())
         })
-        .filter_map(|e| e.ok())
     {
         
         if in_drive % 2048 == 0 && INDEX_RUN.load(std::sync::atomic::Ordering::SeqCst) != run {
