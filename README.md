@@ -1,8 +1,6 @@
 <div align="center">
-<img width="1200" height="630" alt="main-banner" src="https://github.com/user-attachments/assets/198e9a30-ab4c-48ff-956b-f99407896b93" />
+<img width="1200" height="630" alt="main-banner" src="https://github.com/user-attachments/assets/f8a0ae03-8a41-4d4b-894d-0199e5d1ce64" />
 </div>
-
-# Umbra
 
 A minimalist, highly customizable search launcher for Windows, built with Rust and Tauri.
 
@@ -11,8 +9,7 @@ A minimalist, highly customizable search launcher for Windows, built with Rust a
 ## Features
 
 <div align="center">
-<img width="1200" height="400" alt="instantsearch-banner" src="https://github.com/user-attachments/assets/273216e8-6875-4f1f-880f-95bcf0a66a03" />
-
+<img width="1200" height="400" alt="instantsearch-banner" src="https://github.com/user-attachments/assets/bc9ede95-281b-4ad8-9191-cbce91ac8d31" />
 </div>
 
 **Instant Search**  
@@ -25,7 +22,7 @@ Integrated utilities including a calculator, power controls through text and sea
 Pin frequently used items directly in the launcher. Drag and drop files straight from the search results to other applications.
 
 <div align="center">
-<img width="1200" height="400" alt="themes-banner" src="https://github.com/user-attachments/assets/386f4688-2cbd-48a5-8f9a-4917eccc49b7" />
+<img width="1200" height="400" alt="themes-banner" src="https://github.com/user-attachments/assets/bee0429c-62c8-448a-83ba-b12eb6d5b2e8" />
 </div>
 
 **Deep Customization**  
