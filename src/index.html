@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>Spotlight Search</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app-container">
+    
+    <div class="drag-bar" id="drag-bar" data-i18n-tip="dragTip" data-tip="Drag to move · Double-click to center · Right-click to pin" aria-live="polite">
+      <div class="db-rect"><div class="db-progress"></div></div>
+      <span class="ntf-short" id="ntf-short"></span>
+      <span class="ntf-detail" id="ntf-detail"></span>
+    </div>
+
+    <div class="side-pill" id="size-pill" data-i18n-tip="resizeTip" data-tip="Resize"><div class="sp-grip"></div></div>
+
+    <div id="search-box">
+      <svg id="search-icon" width="14" height="14" viewBox="0 0 16 16" fill="none">
+        <path d="M10.9521 10.9642L15 15M12.6667 6.83333C12.6667 10.055 10.055 12.6667 6.83333 12.6667C3.61167 12.6667 1 10.055 1 6.83333C1 3.61167 3.61167 1 6.83333 1C10.055 1 12.6667 3.61167 12.6667 6.83333Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+
+      <div id="input-field">
+        <div id="ghost" aria-hidden="true"><span id="ghost-typed"></span><span id="ghost-rest"></span></div>
+        <input type="text" id="search-input" placeholder="" autocomplete="off" spellcheck="false">
+        <div id="caret" aria-hidden="true"></div>
+        <span id="caret-mirror" aria-hidden="true"></span>
+      </div>
+
+      <button id="clear-btn" data-i18n-tip="clearTip" data-tip="Clear">
+        <svg width="11" height="12" viewBox="0 0 12.3137 12.6137" fill="none">
+          <line x1="1.41421" y1="1.29999" x2="11.3137" y2="11.1995" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <line x1="11.3137" y1="1.41421" x2="1.41423" y2="11.3137" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
+
+      <span id="index-spinner" data-i18n-tip="indexingTip" data-tip="Indexing…" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" role="status" aria-label="Indexing">
+          <circle cx="12" cy="12" r="9.5" stroke-width="3" stroke-linecap="round">
+            <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="2s" repeatCount="indefinite"/>
+            <animate attributeName="stroke-dasharray" values="0 150;42 150;42 150" keyTimes="0;0.5;1" dur="1.5s" repeatCount="indefinite"/>
+            <animate attributeName="stroke-dashoffset" values="0;-16;-59" keyTimes="0;0.5;1" dur="1.5s" repeatCount="indefinite"/>
+          </circle>
+        </svg>
+      </span>
+
+      <button id="settings-btn" data-i18n-tip="settingsTip" data-tip="Settings">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+
+    <div id="results-wrapper">
+      <div id="results-container">
+        <div id="empty-state" class="hidden">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <span data-i18n="noResults">No results found</span>
+        </div>
+
+        <div id="special-section" class="section hidden">
+          <div id="special-content"></div>
+        </div>
+
+        <div id="settings-section" class="section hidden">
+          <div class="special-card settings-card">
+            
+            <div class="settings-row">
+              <span class="settings-label" data-i18n="lblLanguage">Language</span>
+              <div class="seg-row" id="language-seg">
+                <button class="seg-btn" data-lang="en">EN</button>
+                <button class="seg-btn" data-lang="ru">RU</button>
+                <button class="seg-btn" data-lang="ja">JA</button>
+              </div>
+            </div>
+
+            <div class="settings-row interactive" id="setting-hotkey-row">
+              <span class="settings-label" data-i18n="lblHotkey">Global Hotkey</span>
+              <span class="settings-value" id="setting-hotkey-value">…</span>
+            </div>
+
+            <div class="settings-row interactive" id="setting-autostart-row">
+              <span class="settings-label" data-i18n="lblAutostart">Run at startup</span>
+              <span class="toggle" id="setting-autostart"><span class="toggle-knob"></span></span>
+            </div>
+
+            <div class="settings-row">
+              <span class="settings-label" data-i18n="lblAlign">Window Position</span>
+              <div class="align-grid" id="align-grid"></div>
+            </div>
+
+            <div class="settings-row">
+              <span class="settings-label" data-i18n="lblMonitor">Display Monitor</span>
+              <div class="swatch-row" id="monitor-buttons"></div>
+            </div>
+
+            <div class="settings-row">
+              <span class="settings-label" data-i18n="lblZoom">Zoom</span>
+              <div class="zoom-stepper">
+                <button id="setting-zoom-minus" class="stepper-btn">−</button>
+                <span id="setting-zoom-val">1.00</span>
+                <button id="setting-zoom-plus" class="stepper-btn">+</button>
+              </div>
+            </div>
+
+            <div class="settings-row">
+              <span class="settings-label" data-i18n="lblPresets">Theme Presets</span>
+              <div class="swatch-row" id="theme-presets"></div>
+            </div>
+
+            <div class="settings-row">
+              <span class="settings-label" data-i18n="lblAccent">Accent Color</span>
+              <div class="swatch-row" id="accent-swatches"></div>
+              <button id="accent-custom" class="swatch-custom" data-i18n-tip="customAccentTip" data-tip="Custom accent"></button>
+            </div>
+
+            <div class="settings-row">
+              <span class="settings-label" data-i18n="lblBg">Background Color</span>
+              <div class="swatch-row" id="bg-swatches"></div>
+              <button id="bg-custom" class="swatch-custom" data-i18n-tip="customBgTip" data-tip="Custom background"></button>
+            </div>
+
+            <div class="settings-row">
+              <span class="settings-label" data-i18n="lblOpacity">Opacity</span>
+              <div class="zoom-stepper">
+                <button id="setting-alpha-minus" class="stepper-btn">−</button>
+                <span id="setting-alpha-val">100%</span>
+                <button id="setting-alpha-plus" class="stepper-btn">+</button>
+              </div>
+            </div>
+
+            <div class="settings-row">
+              <span class="settings-label" data-i18n="lblRadius">Corner Radius</span>
+              <div class="zoom-stepper">
+                <button id="setting-radius-minus" class="stepper-btn">−</button>
+                <span id="setting-radius-val">12</span>
+                <button id="setting-radius-plus" class="stepper-btn">+</button>
+              </div>
+            </div>
+
+            <div class="settings-row">
+              <span class="settings-label" data-i18n="lblRowH">Row Height</span>
+              <div class="zoom-stepper">
+                <button id="setting-rowh-minus" class="stepper-btn">−</button>
+                <span id="setting-rowh-val">52</span>
+                <button id="setting-rowh-plus" class="stepper-btn">+</button>
+              </div>
+            </div>
+
+            <div class="settings-row">
+              <span class="settings-label" data-i18n="lblGlow">Glow Effect</span>
+              <div class="zoom-stepper">
+                <button id="setting-glow-minus" class="stepper-btn">−</button>
+                <span id="setting-glow-val">off</span>
+                <button id="setting-glow-plus" class="stepper-btn">+</button>
+              </div>
+              <span class="toggle" id="setting-glow"><span class="toggle-knob"></span></span>
+            </div>
+
+            <div class="settings-row interactive" id="setting-border-row">
+              <span class="settings-label" data-i18n="lblBorder">Card Border</span>
+              <span class="toggle" id="setting-border"><span class="toggle-knob"></span></span>
+            </div>
+
+            <div class="settings-row">
+              <span class="settings-label" data-i18n="lblBorderW">Border Width</span>
+              <div class="zoom-stepper">
+                <button id="setting-borderw-minus" class="stepper-btn">−</button>
+                <span id="setting-borderw-val">1</span>
+                <button id="setting-borderw-plus" class="stepper-btn">+</button>
+              </div>
+            </div>
+
+            <div class="settings-row">
+              <span class="settings-label" data-i18n="lblBorderPos">Border Style</span>
+              <div class="seg-row" id="border-pos-seg">
+                <button class="seg-btn" data-pos="inner" data-i18n-tip="borderInnerTip" data-i18n="borderInner">Inner</button>
+                <button class="seg-btn" data-pos="outer" data-i18n-tip="borderOuterTip" data-i18n="borderOuter">Outer</button>
+              </div>
+            </div>
+
+            <div class="settings-row interactive" id="setting-exclude-row">
+              <span class="settings-label" data-i18n="lblContent">Content Categories</span>
+              <span class="settings-value" id="setting-exclude-count">…</span>
+              <span class="exclude-chevron">›</span>
+            </div>
+
+            <div class="settings-row">
+              <span class="settings-label" data-i18n="lblIndex">Indexed Files</span>
+              <span class="settings-value" id="setting-indexed">…</span>
+              <button id="setting-reindex" class="settings-text-btn" data-i18n="lblRebuild">Rebuild</button>
+            </div>
+
+            <div id="content-menu">
+              <div class="ms-head" id="content-head">Current: 4/4</div>
+              <div id="content-groups"></div>
+            </div>
+
+            <div id="settings-status" class="settings-status"></div>
+
+            <div class="settings-row">
+              <span class="settings-label">Umbra v1.0.0 by <a href="#" class="settings-link" id="author-link">Spectrvm</a></span>
+              <button class="settings-text-btn" id="check-update-btn">Check for updates</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="hint" class="hidden" data-i18n="defaultHint">Type to search · Tab completes · Right-click for actions · !help for commands</div>
+
+        <div id="pins-section" class="section hidden">
+          <div id="pins-list"></div>
+        </div>
+
+        <div id="results-section" class="section hidden">
+          <div id="results-list"></div>
+        </div>
+      </div>
+      <div id="custom-scrollbar" aria-hidden="true"><div id="custom-thumb"></div></div>
+    </div>
+  </div>
+
+  <div id="context-menu">
+    <div class="ctx-item" data-action="open">
+      <span class="ctx-item-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg></span>
+      <span class="ctx-item-label" data-i18n="ctxOpen">Open</span>
+      <span class="ctx-item-shortcut">Enter</span>
+    </div>
+    <div class="ctx-item" data-action="admin">
+      <span class="ctx-item-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
+      <span class="ctx-item-label" data-i18n="ctxAdmin">Open as admin</span>
+      <span class="ctx-item-shortcut">Ctrl+Shift+Enter</span>
+    </div>
+    <div class="ctx-item" data-action="directory">
+      <span class="ctx-item-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></span>
+      <span class="ctx-item-label" data-i18n="ctxDirectory">Open directory</span>
+      <span class="ctx-item-shortcut"></span>
+    </div>
+    <div class="ctx-item" data-action="copy">
+      <span class="ctx-item-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></span>
+      <span class="ctx-item-label" data-i18n="ctxCopy">Copy path</span>
+      <span class="ctx-item-shortcut">Shift+Enter</span>
+    </div>
+  </div>
+
+  <script src="i18n.js?v=48"></script>
+  <script src="special.js?v=48"></script>
+  <script src="main.js?v=48"></script>
+</body>
+</html>

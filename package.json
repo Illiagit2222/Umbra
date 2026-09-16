@@ -1,0 +1,12 @@
+{
+  "name": "umbra",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "tauri": "cargo tauri",
+    "dev": "cargo tauri dev",
+    "build": "cargo tauri build",
+    "build:fast": "cargo tauri build --debug"
+  },
+  "devDependencies": {}
+}

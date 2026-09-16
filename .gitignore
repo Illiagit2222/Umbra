@@ -1,0 +1,23 @@
+# Build artifacts
+src-tauri/target/
+src-tauri/gen/
+node_modules/
+*.exe
+
+# Logs
+*.log
+src-tauri/stderr.txt
+src-tauri/icon_debug.log
+
+# OS
+Thumbs.db
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+.claude/
+
+# Temporary
+tmp.txt
+clickLanguage

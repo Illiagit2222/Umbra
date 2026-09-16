@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>Umbra Chat</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="chat.css">
+</head>
+<body>
+  <div id="app-container">
+    
+    <div class="drag-bar" id="drag-bar" data-tip="Drag to move">
+      <div class="db-rect"><div class="db-progress"></div></div>
+    </div>
+
+    <div id="chat-header">
+      <span class="chat-dot"></span>
+      <div id="chat-title">
+        <div id="chat-name">Umbra Chat</div>
+        <div id="chat-status">stub — backend later</div>
+      </div>
+      <button id="chat-clear" data-tip="Clear chat">
+        <svg width="11" height="12" viewBox="0 0 12.3137 12.6137" fill="none">
+          <line x1="1.41421" y1="1.29999" x2="11.3137" y2="11.1995" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <line x1="11.3137" y1="1.41421" x2="1.41423" y2="11.3137" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+
+    <div id="chat-wrapper">
+      <div id="chat-list"></div>
+      <div id="custom-scrollbar" aria-hidden="true"><div id="custom-thumb"></div></div>
+    </div>
+
+    <div id="chat-input-box">
+      <input type="text" id="chat-input" placeholder="Ask anything…" autocomplete="off" spellcheck="false">
+      <button id="chat-send" data-tip="Send">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <script src="chat.js?v=1"></script>
+</body>
+</html>
