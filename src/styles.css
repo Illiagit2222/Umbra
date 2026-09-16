@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600&display=swap');
+﻿@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600&display=swap');
 
 @font-face {
   font-family: 'Stolzl';
@@ -1697,3 +1697,73 @@ html[data-border-pos="outer"] :is(#search-box, .settings-card, #content-menu, #c
   opacity: 0.8;
   text-decoration: underline;
 }
+
+/* === RESTORED MISSING STYLES === */
+
+.hidden {
+  display: none !important;
+}
+
+#hint {
+  font-size: 13px;
+  color: var(--text-dim);
+  text-align: center;
+  padding: 12px var(--pad-x);
+  pointer-events: none;
+  font-family: var(--font-main);
+  background: transparent;
+  border: none;
+}
+
+.swatch-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.swatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.swatch.active {
+  box-shadow: 0 0 0 2px var(--card-bg), 0 0 0 4px var(--text);
+}
+
+.swatch-custom {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px dashed var(--text-dim);
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.align-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.align-cell {
+  width: 28px;
+  height: 20px;
+  background: var(--card-deep);
+  border: 1px solid var(--card-border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.align-cell.active {
+  background: var(--accent);
+}
+
