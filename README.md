@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/banner_beta.png" alt="Umbra open beta test" width="100%">
+<img width="1920" height="1080" alt="main-banner" src="https://github.com/user-attachments/assets/e20f0928-c618-4f06-a755-de875396f024" />
 </div>
 
 # Umbra
@@ -11,7 +11,7 @@ A minimalist, highly customizable search launcher for Windows, built with Rust a
 ## Features
 
 <div align="center">
-  <img src="assets/banner_search.png" alt="Instant search" width="100%">
+<img width="1920" height="1080" alt="instantsearch-banner" src="https://github.com/user-attachments/assets/c15a863a-fbb1-45c3-a232-f1e45abc79ba" />
 </div>
 
 **Instant Search**  
@@ -24,7 +24,7 @@ Integrated utilities including a calculator, color picker, dictionary, and seaml
 Pin frequently used items directly in the launcher. Drag and drop files straight from the search results to other applications.
 
 <div align="center">
-  <img src="assets/banner_settings.png" alt="Express it the way you like" width="100%">
+<img width="1920" height="1080" alt="themes-banner" src="https://github.com/user-attachments/assets/1d62bb45-786b-4f7f-b6a4-0f452294d602" />
 </div>
 
 **Deep Customization**  
