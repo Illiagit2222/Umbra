@@ -1007,6 +1007,30 @@ html[data-border-pos="outer"] :is(#search-box, .settings-card, #content-menu, #c
   background: transparent;
 }
 
+#results-wrapper {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  margin-top: 12px;
+}
+
+#results-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  overflow-y: scroll;
+  padding: 0 var(--pad-x) var(--gap) var(--pad-x);
+  box-sizing: border-box;
+}
+
+/* Hide scrollbar since we use custom-scrollbar */
+#results-container::-webkit-scrollbar {
+  display: none;
+}
+
 .section,
 #results-list,
 #pins-list,
