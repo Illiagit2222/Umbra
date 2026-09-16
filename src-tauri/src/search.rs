@@ -275,75 +275,29 @@ pub fn search_index(query: &str, version: u32) -> Vec<SearchResult> {
     
     let disabled_kinds = config::get_disabled_kinds();
     
-    let excludes: Vec<String> = config::get_index_excludes()
-        .into_iter()
-        .map(|s| s.to_lowercase())
-        .collect();
-
     with_entries(|entries| {
-        
-        let mut picked: Vec<(ScoreKey, usize)> = entries
-            .par_iter()
-            .enumerate()
-            .fold(
-                || std::collections::BinaryHeap::with_capacity(MAX_RESULTS + 1),
-                |mut heap, (i, e)| {
-                    
-                    if i & 8191 == 0 && SEARCH_VERSION.load(Ordering::Relaxed) != version {
-                        return heap;
-                    }
-                    
-                    if disabled_kinds.contains(&e.kind) {
-                        return heap;
-                    }
-                    
-                    if !excludes.is_empty() {
-                        let mut excluded = false;
-                        for comp in e.path.split(['\\', '/']) {
-                            let lower = comp.to_lowercase();
-                            if excludes.iter().any(|x| *x == lower) {
-                                excluded = true;
-                                break;
-                            }
-                        }
-                        if excluded {
-                            return heap;
-                        }
-                    }
-                    if let Some(score) = match_score(e, &q, &variants, &frec, fuzzy_deadline) {
-                        if heap.len() < MAX_RESULTS {
-                            heap.push(std::cmp::Reverse((score, i)));
-                        } else if let Some(std::cmp::Reverse((worst, _))) = heap.peek() {
-                            if score < *worst {
-                                heap.pop();
-                                heap.push(std::cmp::Reverse((score, i)));
-                            }
-                        }
-                    }
-                    heap
-                },
-            )
-            .reduce(
-                || std::collections::BinaryHeap::with_capacity(MAX_RESULTS + 1),
-                |mut heap_a, heap_b| {
-                    for item in heap_b {
-                        if heap_a.len() < MAX_RESULTS {
-                            heap_a.push(item);
-                        } else if let Some(std::cmp::Reverse((worst, _))) = heap_a.peek() {
-                            let std::cmp::Reverse((score, _)) = item;
-                            if score < *worst {
-                                heap_a.pop();
-                                heap_a.push(item);
-                            }
-                        }
-                    }
-                    heap_a
-                },
-            )
-            .into_iter()
-            .map(|std::cmp::Reverse(x)| x)
-            .collect();
+        let mut heap = std::collections::BinaryHeap::with_capacity(MAX_RESULTS + 1);
 
+        for (i, e) in entries.iter().enumerate() {
+            if i & 8191 == 0 && SEARCH_VERSION.load(Ordering::Relaxed) != version {
+                break;
+            }
+            if disabled_kinds.contains(&e.kind) {
+                continue;
+            }
+            if let Some(score) = match_score(e, &q, &variants, &frec, fuzzy_deadline) {
+                if heap.len() < MAX_RESULTS {
+                    heap.push(std::cmp::Reverse((score, i)));
+                } else if let Some(std::cmp::Reverse((worst, _))) = heap.peek() {
+                    if score < *worst {
+                        heap.pop();
+                        heap.push(std::cmp::Reverse((score, i)));
+                    }
+                }
+            }
+        }
+
+        let mut picked: Vec<(ScoreKey, usize)> = heap.into_iter().map(|std::cmp::Reverse(x)| x).collect();
         picked.sort_unstable();
 
         picked
