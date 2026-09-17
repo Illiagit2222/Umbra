@@ -1,6 +1,7 @@
 [package]
 name = "umbra"
-version = "0.1.0"
+version = "0.1.1"
+description = "Lightning fast system search tool"
 edition = "2021"
 
 # Fast iteration profile: same app, skips LTO/single-CG so rebuilds are quick.
