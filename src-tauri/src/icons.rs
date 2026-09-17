@@ -3,8 +3,8 @@ use std::ffi::c_void;
 use std::sync::{LazyLock, Mutex, OnceLock};
 use std::thread;
 
-const ICON_SIZE: i32 = 256;
-const MAX_ICON_CACHE_SIZE: usize = 500;
+const ICON_SIZE: i32 = 64;
+const MAX_ICON_CACHE_SIZE: usize = 100;
 
 static ICON_CACHE: LazyLock<Mutex<IconCache>> =
     LazyLock::new(|| Mutex::new(IconCache::new()));

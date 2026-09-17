@@ -1,7 +1,8 @@
 {
-  "name": "umbra",
-  "version": "0.1.0",
+  "name": "search",
   "private": true,
+  "version": "0.1.1",
+  "type": "module",
   "scripts": {
     "tauri": "cargo tauri",
     "dev": "cargo tauri dev",

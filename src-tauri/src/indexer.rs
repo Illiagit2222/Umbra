@@ -249,9 +249,7 @@ pub fn init_index_with_progress(app: tauri::AppHandle) {
             },
         );
 
-        if !app_paths.is_empty() {
-            icons::pre_cache_icons(&app_paths);
-        }
+        // Icons will be lazy-loaded to prevent massive memory footprint
         if cancelled() {
             return;
         }
