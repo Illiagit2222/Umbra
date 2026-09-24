@@ -340,7 +340,7 @@ settingHotkeyRow.addEventListener("click", (e) => {
   if (hotkeyCapturing) return;
   hotkeyCapturing = true;
   settingHotkeyRow.classList.add("capturing");
-  settingHotkeyValue.textContent = "press keysвЂ¦";
+  settingHotkeyValue.textContent = "press keys…";
   setSettingsStatus("");
 });
 
@@ -407,7 +407,7 @@ settingReindex.addEventListener("click", async (e) => {
     indexingActive = true;
     indexRan = true;
     indexSpinner.classList.add("visible");
-    if (settingIndexed) settingIndexed.textContent = "indexingвЂ¦";
+    if (settingIndexed) settingIndexed.textContent = "indexing…";
     await invoke("reindex");
     toggleSettings();
     showNotify("Rebuilding index", { type: "info", detail: "search stays available while it runs" });
@@ -1919,7 +1919,7 @@ let indexRan = false;
 let idxPct = 0;
 
 function syncIndexTip(active) {
-  indexSpinner.dataset.tip = active ? `IndexingвЂ¦ ${idxPct}%` : "Index ready";
+  indexSpinner.dataset.tip = active ? `Indexing… ${idxPct}%` : "Index ready";
 }
 
 listen("index-progress", (event) => {
