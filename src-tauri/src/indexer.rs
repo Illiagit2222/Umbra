@@ -189,6 +189,14 @@ pub fn init_index_with_progress(app: tauri::AppHandle) {
 
         index_registry_apps(&mut entries);
         index_system_tools(&mut entries, &system_tool_dirs());
+        let skip_dirs: std::collections::HashSet<String> =
+            crate::config::get_index_excludes().into_iter().collect();
+        index_program_exes(
+            &mut entries,
+            &program_dirs(),
+            &skip_dirs,
+            &crate::config::get_disabled_drives(),
+        );
         if cancelled() {
             return;
         }
@@ -405,6 +413,63 @@ fn system_tool_dirs() -> Vec<PathBuf> {
         dirs.push(local.join("Microsoft\\WindowsApps"));
     }
     dirs
+}
+
+const APPDATA_EXE_DEPTH: usize = 4;
+
+fn program_dirs() -> Vec<(PathBuf, Option<usize>)> {
+    let mut dirs: Vec<(PathBuf, Option<usize>)> =
+        ["ProgramFiles", "ProgramFiles(x86)", "ProgramW6432"]
+            .iter()
+            .filter_map(std::env::var_os)
+            .map(|d| (PathBuf::from(d), None))
+            .collect();
+    if let Some(local) = dirs::data_local_dir() {
+        dirs.push((local.join("Programs"), None));
+        dirs.push((local, Some(APPDATA_EXE_DEPTH)));
+    }
+    if let Some(roaming) = dirs::data_dir() {
+        dirs.push((roaming, Some(APPDATA_EXE_DEPTH)));
+    }
+    let mut seen = std::collections::HashSet::new();
+    dirs.retain(|(d, _)| seen.insert(d.to_string_lossy().to_lowercase()));
+    dirs
+}
+
+fn index_program_exes(
+    entries: &mut Vec<SearchEntry>,
+    dirs: &[(PathBuf, Option<usize>)],
+    skip_dirs: &std::collections::HashSet<String>,
+    disabled_drives: &[String],
+) {
+    for (dir, max_depth) in dirs {
+        let on_disabled_drive = disabled_drives.iter().any(|d| {
+            dir.to_string_lossy()
+                .to_uppercase()
+                .starts_with(&d.to_uppercase())
+        });
+        if on_disabled_drive || !dir.is_dir() {
+            continue;
+        }
+        let walk = pruned_walk(dir, skip_dirs.clone()).max_depth(max_depth.unwrap_or(usize::MAX));
+        for entry in walk.into_iter().filter_map(|e| e.ok()) {
+            let is_exe = entry.file_type().is_file()
+                && Path::new(&entry.file_name())
+                    .extension()
+                    .map_or(false, |ext| ext.eq_ignore_ascii_case("exe"));
+            if !is_exe {
+                continue;
+            }
+            let path_str = entry.path().to_string_lossy().to_string();
+            entries.push(SearchEntry {
+                name_lower: derive_display_name(&path_str, KIND_APP)
+                    .to_lowercase()
+                    .into_boxed_str(),
+                path: path_str,
+                kind: KIND_APP,
+            });
+        }
+    }
 }
 
 fn index_system_tools(entries: &mut Vec<SearchEntry>, dirs: &[PathBuf]) {
@@ -760,7 +825,10 @@ fn pruned_walk(root: &Path, skip_dirs: std::collections::HashSet<String>) -> Wal
     WalkDir::new(root)
         .follow_links(false)
         .skip_hidden(false)
-        .process_read_dir(move |_, _, _, children| {
+        .process_read_dir(move |depth, _, _, children| {
+            if depth.is_none() {
+                return;
+            }
             children.retain(|child| match child {
                 Ok(c) => !is_skipped_name(&c.file_name().to_string_lossy(), &skip_dirs),
                 Err(_) => true,
@@ -986,6 +1054,40 @@ mod tests {
         let names: Vec<&str> = entries.iter().map(|e| e.name_lower.as_ref()).collect();
         assert_eq!(names, vec!["notepad"]);
         assert!(entries.iter().all(|e| e.kind == KIND_APP));
+        fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn program_folders_contribute_only_exes() {
+        let root = temp_dir("programs");
+        touch(root.join("Portable Tool").join("tool.exe"));
+        touch(root.join("Portable Tool").join("tool.dll"));
+        touch(root.join("Vendor App").join("bin").join("app.EXE"));
+        touch(root.join("Vendor App").join("node_modules").join("x").join("helper.exe"));
+        let skip: HashSet<String> = HashSet::from(["node_modules".to_string()]);
+
+        let mut entries = Vec::new();
+        index_program_exes(&mut entries, &[(root.clone(), None), (root.join("missing"), None)], &skip, &[]);
+        let mut names: Vec<&str> = entries.iter().map(|e| e.name_lower.as_ref()).collect();
+        names.sort();
+        assert_eq!(names, vec!["app", "tool"]);
+
+        let mut shallow = Vec::new();
+        index_program_exes(&mut shallow, &[(root.clone(), Some(2))], &skip, &[]);
+        let names: Vec<&str> = shallow.iter().map(|e| e.name_lower.as_ref()).collect();
+        assert_eq!(names, vec!["tool"], "max depth must stop before Vendor App/bin/app.EXE");
+
+        let excluded_root = root.join("Program Files");
+        touch(excluded_root.join("Vendor").join("vendor-app.exe"));
+        let skip_root: HashSet<String> = HashSet::from(["program files".to_string()]);
+        let mut from_root = Vec::new();
+        index_program_exes(&mut from_root, &[(excluded_root, None)], &skip_root, &[]);
+        assert_eq!(from_root.len(), 1, "a root named like an exclude must still be walked");
+
+        let mut none = Vec::new();
+        let drive = root.to_string_lossy()[..3].to_string();
+        index_program_exes(&mut none, &[(root.clone(), None)], &skip, &[drive]);
+        assert!(none.is_empty());
         fs::remove_dir_all(&root).unwrap();
     }
 
