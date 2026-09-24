@@ -57,32 +57,16 @@ pub fn get_hotkey() -> String {
     config::get_hotkey()
 }
 
-fn normalize_hotkey(k: &str) -> Option<String> {
-    let k = k.trim();
-    if k.is_empty() {
-        return None;
-    }
-    let parts: Vec<&str> = k.split('+').collect();
-    if parts.len() < 2 {
-        return None;
-    }
-    let valid_modifiers = ["ctrl", "alt", "shift", "super", "meta", "cmd", "command"];
-    let has_valid_modifier = parts[..parts.len() - 1]
-        .iter()
-        .any(|p| valid_modifiers.contains(&p.to_lowercase().as_str()));
-    if !has_valid_modifier {
-        return None;
-    }
-    Some(k.to_string())
-}
-
 #[tauri::command]
 pub fn set_hotkey(_app: tauri::AppHandle, key: String) -> Result<String, String> {
-    let k = normalize_hotkey(&key).ok_or(
-        "Hotkey must include a modifier (Ctrl, Alt, Shift, Super), e.g. Ctrl+Shift+P".to_string(),
-    )?;
+    let k = key.trim();
+    if !crate::keyboard_hook::is_supported_hotkey(k) {
+        return Err(
+            "Hotkey must be a modifier (Ctrl, Alt, Shift, Super) plus a letter, digit, F1-F12, Space or arrow key, e.g. Ctrl+Shift+P".to_string(),
+        );
+    }
 
-    config::set_hotkey(&k);
+    config::set_hotkey(k);
     crate::keyboard_hook::update_hotkey();
 
     Ok("Hotkey applied".to_string())
