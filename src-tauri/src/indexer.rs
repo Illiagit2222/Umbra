@@ -292,6 +292,10 @@ pub fn refresh_fast_index_async() {
     std::thread::spawn(refresh_fast_index);
 }
 
+fn missing_paths(paths: Vec<String>) -> std::collections::HashSet<String> {
+    paths.into_iter().filter(|p| !Path::new(p).exists()).collect()
+}
+
 pub fn refresh_fast_index() {
     let cell = LAST_FAST_REFRESH.get_or_init(|| std::sync::Mutex::new(None));
     {
@@ -311,18 +315,26 @@ pub fn refresh_fast_index() {
         return;
     }
 
+    let fresh_paths: std::collections::HashSet<String> =
+        fresh.iter().map(|e| e.path.clone()).collect();
+
+    // drop old entries superseded by the fresh scan, plus app/shortcut
+    // entries whose target no longer exists on disk (uninstalled) —
+    // a fresh scan alone can't see removals. The disk checks run before
+    // taking the write lock so searches are not blocked meanwhile.
+    let app_paths: Vec<String> = with_entries(|r| {
+        r.iter()
+            .filter(|e| e.kind == KIND_APP || e.kind == KIND_SHORTCUT)
+            .filter(|e| !fresh_paths.contains(&e.path))
+            .map(|e| e.path.clone())
+            .collect()
+    })
+    .unwrap_or_default();
+    let gone = missing_paths(app_paths);
+
     if let Some(rw) = INDEX.get() {
         if let Ok(mut w) = rw.write() {
-            let fresh_paths: std::collections::HashSet<&str> =
-                fresh.iter().map(|e| e.path.as_str()).collect();
-            // drop old entries superseded by the fresh scan, plus app/shortcut
-            // entries whose target no longer exists on disk (uninstalled) —
-            // a fresh scan alone can't see removals
-            w.retain(|e| {
-                !fresh_paths.contains(e.path.as_str())
-                    && ((e.kind != KIND_APP && e.kind != KIND_SHORTCUT)
-                        || Path::new(&e.path).exists())
-            });
+            w.retain(|e| !fresh_paths.contains(&e.path) && !gone.contains(&e.path));
             w.extend(fresh);
         }
     }
@@ -978,6 +990,18 @@ mod tests {
     }
 
     #[test]
+    fn missing_paths_reports_only_deleted_targets() {
+        let root = temp_dir("missing");
+        touch(root.join("alive.exe"));
+        let alive = root.join("alive.exe").to_string_lossy().to_string();
+        let gone = root.join("gone.lnk").to_string_lossy().to_string();
+
+        let missing = missing_paths(vec![alive, gone.clone()]);
+        assert_eq!(missing, HashSet::from([gone]));
+        fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
     fn expands_environment_variables_like_reg_expand_sz() {
         std::env::set_var("UMBRA_TEST_DIR", "C:\\Tools");
         assert_eq!(expand_env_vars("%UMBRA_TEST_DIR%\\app.exe,0"), "C:\\Tools\\app.exe,0");
@@ -1014,4 +1038,3 @@ mod tests {
         }
     }
 }
-
