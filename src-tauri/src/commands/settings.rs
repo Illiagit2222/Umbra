@@ -91,6 +91,7 @@ pub fn get_autostart() -> bool {
 
 #[tauri::command]
 pub fn set_autostart(enable: bool) -> bool {
+    config::set_autostart(enable);
     autostart::set_enabled(enable);
     autostart::is_enabled()
 }
