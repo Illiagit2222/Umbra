@@ -191,6 +191,7 @@ pub fn init_index_with_progress(app: tauri::AppHandle) {
         );
 
         index_registry_apps(&mut entries);
+        index_system_tools(&mut entries, &system_tool_dirs());
         if cancelled() {
             return;
         }
@@ -341,9 +342,12 @@ fn index_start_menu(entries: &mut Vec<SearchEntry>) {
                 .join("Programs"),
         );
     }
-    paths.push(PathBuf::from(
-        "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs",
-    ));
+    paths.push(
+        std::env::var_os("ProgramData")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from("C:\\ProgramData"))
+            .join("Microsoft\\Windows\\Start Menu\\Programs"),
+    );
 
     for base in &paths {
         if !base.exists() {
@@ -372,6 +376,46 @@ fn index_start_menu(entries: &mut Vec<SearchEntry>) {
             let path_str = entry.path().to_string_lossy().to_string();
             entries.push(SearchEntry {
                 name_lower: display_name.to_lowercase().into_boxed_str(),
+                path: path_str,
+                kind: KIND_APP,
+            });
+        }
+    }
+}
+
+fn system_tool_dirs() -> Vec<PathBuf> {
+    let root = std::env::var_os("SystemRoot")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("C:\\Windows"));
+    let mut dirs = vec![
+        root.join("System32"),
+        root.join("System32\\WindowsPowerShell\\v1.0"),
+        root,
+    ];
+    if let Some(local) = dirs::data_local_dir() {
+        dirs.push(local.join("Microsoft\\WindowsApps"));
+    }
+    dirs
+}
+
+fn index_system_tools(entries: &mut Vec<SearchEntry>, dirs: &[PathBuf]) {
+    for dir in dirs {
+        let Ok(rd) = std::fs::read_dir(dir) else {
+            continue;
+        };
+        for entry in rd.filter_map(|e| e.ok()) {
+            let path = entry.path();
+            let is_exe = path
+                .extension()
+                .map_or(false, |ext| ext.eq_ignore_ascii_case("exe"));
+            if !is_exe || !entry.file_type().map_or(false, |t| t.is_file()) {
+                continue;
+            }
+            let path_str = path.to_string_lossy().to_string();
+            entries.push(SearchEntry {
+                name_lower: derive_display_name(&path_str, KIND_APP)
+                    .to_lowercase()
+                    .into_boxed_str(),
                 path: path_str,
                 kind: KIND_APP,
             });
@@ -599,6 +643,23 @@ const SCAN_SMOOTH: f64 = 40_000.0;
 const EMIT_EVERY_MS: u128 = 150;
 const EMIT_EVERY_FILES: usize = 1500;
 
+fn is_skipped_name(name: &str, skip_dirs: &std::collections::HashSet<String>) -> bool {
+    let name = name.to_lowercase();
+    name.starts_with('.') || skip_dirs.contains(name.as_str())
+}
+
+fn pruned_walk(root: &Path, skip_dirs: std::collections::HashSet<String>) -> WalkDir {
+    WalkDir::new(root)
+        .follow_links(false)
+        .skip_hidden(false)
+        .process_read_dir(move |_, _, _, children| {
+            children.retain(|child| match child {
+                Ok(c) => !is_skipped_name(&c.file_name().to_string_lossy(), &skip_dirs),
+                Err(_) => true,
+            });
+        })
+}
+
 fn index_drive(
     drive: &str,
     skip_dirs: &std::collections::HashSet<String>,
@@ -618,16 +679,7 @@ fn index_drive(
         .checked_sub(std::time::Duration::from_millis(1000))
         .unwrap_or_else(std::time::Instant::now);
 
-    for entry in WalkDir::new(root)
-        .follow_links(false)
-        .skip_hidden(false)
-        .into_iter()
-        .filter_map(|e| e.ok())
-        .filter(|e| {
-            let name = e.file_name().to_string_lossy().to_lowercase();
-            !name.starts_with('.') && !skip_dirs.contains(name.as_str())
-        })
-    {
+    for entry in pruned_walk(root, skip_dirs.clone()).into_iter().filter_map(|e| e.ok()) {
         
         if in_drive % 2048 == 0 && INDEX_RUN.load(std::sync::atomic::Ordering::SeqCst) != run {
             return;
@@ -768,4 +820,75 @@ pub fn get_available_drives() -> Vec<String> {
 
 pub fn get_indexed_count() -> usize {
     with_entries(|r| r.len()).unwrap_or(0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashSet;
+    use std::fs;
+
+    fn temp_dir(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("umbra-indexer-{}-{}", name, std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    fn touch(path: PathBuf) {
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, b"").unwrap();
+    }
+
+    #[test]
+    fn pruned_walk_skips_whole_excluded_subtrees() {
+        let root = temp_dir("walk");
+        touch(root.join("keep").join("a.txt"));
+        touch(root.join("node_modules").join("pkg").join("index.js"));
+        touch(root.join("Build").join("out").join("app.exe"));
+        touch(root.join(".git").join("config"));
+        touch(root.join("$Recycle.Bin").join("S-1-5").join("deleted.docx"));
+        let skip: HashSet<String> = ["node_modules", "build", "$recycle.bin"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+
+        let found: HashSet<String> = pruned_walk(&root, skip)
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.depth() > 0)
+            .map(|e| e.path().strip_prefix(&root).unwrap().to_string_lossy().replace('\\', "/"))
+            .collect();
+
+        let expected: HashSet<String> = ["keep", "keep/a.txt"].iter().map(|s| s.to_string()).collect();
+        assert_eq!(found, expected);
+        fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn system_tools_are_indexed_without_recursing() {
+        let root = temp_dir("tools");
+        touch(root.join("notepad.exe"));
+        touch(root.join("readme.txt"));
+        touch(root.join("drivers").join("hidden.exe"));
+
+        let mut entries = Vec::new();
+        index_system_tools(&mut entries, &[root.clone(), root.join("missing")]);
+
+        let names: Vec<&str> = entries.iter().map(|e| e.name_lower.as_ref()).collect();
+        assert_eq!(names, vec!["notepad"]);
+        assert!(entries.iter().all(|e| e.kind == KIND_APP));
+        fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn common_windows_tools_are_found() {
+        let mut entries = Vec::new();
+        index_system_tools(&mut entries, &system_tool_dirs());
+        let names: HashSet<&str> = entries.iter().map(|e| e.name_lower.as_ref()).collect();
+        for tool in ["notepad", "cmd", "regedit", "taskmgr", "explorer", "calc", "control", "powershell"] {
+            assert!(names.contains(tool), "{tool} missing");
+        }
+    }
 }
