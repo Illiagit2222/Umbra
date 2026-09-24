@@ -54,7 +54,12 @@ pub fn reorder_pins(ordered_paths: Vec<String>) -> bool {
 
 #[tauri::command]
 pub fn get_hotkey() -> String {
-    config::get_hotkey()
+    let hotkey = config::get_hotkey();
+    if crate::keyboard_hook::is_supported_hotkey(&hotkey) {
+        hotkey
+    } else {
+        "Alt+Space".to_string()
+    }
 }
 
 #[tauri::command]
