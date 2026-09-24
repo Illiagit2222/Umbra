@@ -134,10 +134,7 @@ pub fn get_placement() -> Placement {
 
 #[tauri::command]
 pub fn set_placement(align: String, monitor: i32) -> Placement {
-    let ok = align.len() == 2
-        && matches!(align.as_bytes()[0], b't' | b'c' | b'b')
-        && matches!(align.as_bytes()[1], b'l' | b'c' | b'r');
-    let a = if ok { align } else { "cc".to_string() };
+    let a = if config::is_valid_align(&align) { align } else { "cc".to_string() };
     config::set_placement(a, monitor);
     let (align, monitor) = config::get_placement();
     Placement { align, monitor }

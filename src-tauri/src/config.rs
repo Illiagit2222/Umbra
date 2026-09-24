@@ -240,11 +240,17 @@ pub fn get_placement() -> (String, i32) {
     ensure_loaded();
     let guard = STATE.lock().unwrap();
     let c = &guard.as_ref().unwrap().config;
-    let mut align = c.align.clone();
-    if align.len() < 2 {
-        align = "cc".to_string();
-    }
+    let align = if is_valid_align(&c.align) {
+        c.align.clone()
+    } else {
+        default_align()
+    };
     (align, c.monitor)
+}
+
+pub fn is_valid_align(align: &str) -> bool {
+    let b = align.as_bytes();
+    b.len() == 2 && matches!(b[0], b't' | b'c' | b'b') && matches!(b[1], b'l' | b'c' | b'r')
 }
 
 pub fn set_placement(align: String, monitor: i32) {
@@ -406,4 +412,19 @@ pub fn set_disabled_drives(drives: Vec<String>) {
     clean.dedup();
     state.config.disabled_drives = clean;
     save(state);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn align_validation_rejects_bad_values_without_panicking() {
+        for ok in ["tl", "cc", "br", "tc"] {
+            assert!(is_valid_align(ok), "{ok}");
+        }
+        for bad in ["", "c", "ccc", "xx", "яя", "cя", "CC"] {
+            assert!(!is_valid_align(bad), "{bad}");
+        }
+    }
 }
