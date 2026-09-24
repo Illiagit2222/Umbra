@@ -8,9 +8,6 @@ use std::thread;
 use tauri::Emitter;
 use jwalk::WalkDir;
 
-#[cfg(target_os = "windows")]
-use std::os::windows::process::CommandExt;
-
 pub(crate) static INDEX: OnceLock<RwLock<Vec<SearchEntry>>> = OnceLock::new();
 
 pub(crate) const KIND_APP: u8 = 0;
@@ -465,9 +462,18 @@ fn clean_registry_path(val: &str) -> Option<String> {
     None
 }
 
+fn is_inside_system_root(dir: &Path) -> bool {
+    let Some(root) = std::env::var_os("SystemRoot") else {
+        return false;
+    };
+    let root = root.to_string_lossy().trim_end_matches('\\').to_lowercase();
+    let dir = dir.to_string_lossy().to_lowercase();
+    dir == root || dir.starts_with(&format!("{root}\\"))
+}
+
 fn find_exe_in_dir(dir: &str, app_name: &str) -> Option<String> {
     let p = Path::new(dir);
-    if !p.is_dir() {
+    if !p.is_dir() || is_inside_system_root(p) {
         return None;
     }
 
@@ -497,141 +503,231 @@ fn find_exe_in_dir(dir: &str, app_name: &str) -> Option<String> {
     None
 }
 
+#[derive(Default)]
+struct UninstallEntry {
+    name: Option<String>,
+    icon: Option<String>,
+    location: Option<String>,
+    uninstall: Option<String>,
+}
+
+fn expand_env_vars(value: &str) -> String {
+    let mut out = String::with_capacity(value.len());
+    let mut rest = value;
+    while let Some(start) = rest.find('%') {
+        out.push_str(&rest[..start]);
+        let after = &rest[start + 1..];
+        match after.find('%') {
+            Some(end) => {
+                let name = &after[..end];
+                match std::env::var(name) {
+                    Ok(v) if !name.is_empty() => out.push_str(&v),
+                    _ => {
+                        out.push('%');
+                        out.push_str(name);
+                        out.push('%');
+                    }
+                }
+                rest = &after[end + 1..];
+            }
+            None => {
+                out.push_str(&rest[start..]);
+                rest = "";
+            }
+        }
+    }
+    out.push_str(rest);
+    out
+}
+
+#[cfg(target_os = "windows")]
+mod registry {
+    use windows_sys::Win32::Foundation::ERROR_MORE_DATA;
+    use windows_sys::Win32::System::Registry::*;
+
+    fn wide(s: &str) -> Vec<u16> {
+        s.encode_utf16().chain(std::iter::once(0)).collect()
+    }
+
+    pub struct Key(HKEY);
+
+    impl Drop for Key {
+        fn drop(&mut self) {
+            unsafe { RegCloseKey(self.0) };
+        }
+    }
+
+    impl Key {
+        pub fn open(parent: HKEY, path: &str) -> Option<Key> {
+            let mut hkey: HKEY = std::ptr::null_mut();
+            let path = wide(path);
+            let res = unsafe {
+                RegOpenKeyExW(parent, path.as_ptr(), 0, KEY_READ | KEY_WOW64_64KEY, &mut hkey)
+            };
+            (res == 0 && !hkey.is_null()).then_some(Key(hkey))
+        }
+
+        pub fn child(&self, name: &str) -> Option<Key> {
+            Key::open(self.0, name)
+        }
+
+        pub fn subkey_names(&self) -> Vec<String> {
+            let mut names = Vec::new();
+            let mut index = 0;
+            loop {
+                let mut buf = [0u16; 256];
+                let mut len = buf.len() as u32;
+                let res = unsafe {
+                    RegEnumKeyExW(
+                        self.0,
+                        index,
+                        buf.as_mut_ptr(),
+                        &mut len,
+                        std::ptr::null(),
+                        std::ptr::null_mut(),
+                        std::ptr::null_mut(),
+                        std::ptr::null_mut(),
+                    )
+                };
+                index += 1;
+                match res {
+                    0 => names.push(String::from_utf16_lossy(&buf[..len as usize])),
+                    ERROR_MORE_DATA => continue,
+                    _ => break,
+                }
+            }
+            names
+        }
+
+        pub fn string(&self, name: &str) -> Option<String> {
+            let name = wide(name);
+            let mut kind: REG_VALUE_TYPE = 0;
+            let mut size: u32 = 0;
+            let res = unsafe {
+                RegQueryValueExW(self.0, name.as_ptr(), std::ptr::null(), &mut kind, std::ptr::null_mut(), &mut size)
+            };
+            if res != 0 || (kind != REG_SZ && kind != REG_EXPAND_SZ) {
+                return None;
+            }
+            let mut buf = vec![0u16; size as usize / 2 + 1];
+            let mut bytes = (buf.len() * 2) as u32;
+            let res = unsafe {
+                RegQueryValueExW(
+                    self.0,
+                    name.as_ptr(),
+                    std::ptr::null(),
+                    std::ptr::null_mut(),
+                    buf.as_mut_ptr() as *mut u8,
+                    &mut bytes,
+                )
+            };
+            if res != 0 {
+                return None;
+            }
+            let chars = &buf[..(bytes as usize / 2).min(buf.len())];
+            let end = chars.iter().position(|&c| c == 0).unwrap_or(chars.len());
+            let value = String::from_utf16_lossy(&chars[..end]).trim().to_string();
+            let value = if kind == REG_EXPAND_SZ {
+                super::expand_env_vars(&value)
+            } else {
+                value
+            };
+            (!value.is_empty()).then_some(value)
+        }
+    }
+
+    pub fn uninstall_entries() -> Vec<super::UninstallEntry> {
+        const UNINSTALL: &str = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall";
+        const UNINSTALL_WOW: &str = "SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall";
+        let roots = [
+            (HKEY_LOCAL_MACHINE, UNINSTALL),
+            (HKEY_CURRENT_USER, UNINSTALL),
+            (HKEY_LOCAL_MACHINE, UNINSTALL_WOW),
+        ];
+        let mut out = Vec::new();
+        for (root, path) in roots {
+            let Some(key) = Key::open(root, path) else {
+                continue;
+            };
+            for sub in key.subkey_names() {
+                let Some(app) = key.child(&sub) else {
+                    continue;
+                };
+                out.push(super::UninstallEntry {
+                    name: app.string("DisplayName"),
+                    icon: app.string("DisplayIcon"),
+                    location: app.string("InstallLocation"),
+                    uninstall: app.string("UninstallString"),
+                });
+            }
+        }
+        out
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn uninstall_entries() -> Vec<UninstallEntry> {
+    registry::uninstall_entries()
+}
+
+#[cfg(not(target_os = "windows"))]
+fn uninstall_entries() -> Vec<UninstallEntry> {
+    Vec::new()
+}
+
+fn resolve_uninstall_entry(app: UninstallEntry) -> Option<(String, String)> {
+    let app_name = app.name?;
+    if app_name.len() < 2 {
+        return None;
+    }
+
+    let mut resolved_path = app.icon.as_deref().and_then(clean_registry_path);
+
+    if resolved_path.is_none() {
+        if let Some(loc_path) = &app.location {
+            let cleaned = loc_path.trim().replace('"', "");
+            if !cleaned.is_empty() && Path::new(&cleaned).exists() {
+                resolved_path = find_exe_in_dir(&cleaned, &app_name);
+            }
+        }
+    }
+
+    if resolved_path.is_none() {
+        if let Some(cleaned) = app.uninstall.as_deref().and_then(clean_registry_path) {
+            if let Some(parent) = Path::new(&cleaned).parent() {
+                if parent.exists() {
+                    resolved_path = find_exe_in_dir(&parent.to_string_lossy(), &app_name);
+                }
+            }
+        }
+    }
+
+    let path = resolved_path?;
+    Path::new(&path).is_file().then_some((app_name, path))
+}
+
 fn index_registry_apps(entries: &mut Vec<SearchEntry>) {
     let mut seen = std::collections::HashSet::new();
     let mut seen_paths = std::collections::HashSet::new();
-
-    let hives = [
-        "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
-        "HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
-        "HKLM\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
-    ];
-
-    for hive in &hives {
-        
-        let mut reg_cmd = std::process::Command::new("reg");
-        reg_cmd.args(["query", hive, "/s", "/reg:64"]);
-        #[cfg(target_os = "windows")]
-        reg_cmd.creation_flags(0x08000000);
-        if let Ok(out) = reg_cmd.output() {
-            let text = String::from_utf8_lossy(&out.stdout);
-
-            let mut current_name: Option<String> = None;
-            let mut current_icon: Option<String> = None;
-            let mut current_location: Option<String> = None;
-            let mut current_uninstall: Option<String> = None;
-
-            let mut process_entry = |name: &mut Option<String>,
-                                     icon: &mut Option<String>,
-                                     loc: &mut Option<String>,
-                                     un: &mut Option<String>| {
-                if let Some(app_name) = name.take() {
-                    if app_name.is_empty() || app_name.len() < 2 {
-                        return;
-                    }
-                    let key = app_name.to_lowercase();
-                    if seen.contains(&key) {
-                        return;
-                    }
-
-                    let mut resolved_path = None;
-
-                    if let Some(icon_path) = icon.take() {
-                        if let Some(cleaned) = clean_registry_path(&icon_path) {
-                            resolved_path = Some(cleaned);
-                        }
-                    }
-
-                    if resolved_path.is_none() {
-                        if let Some(loc_path) = loc.take() {
-                            let cleaned = loc_path.trim().replace('"', "");
-                            if !cleaned.is_empty() && Path::new(&cleaned).exists() {
-                                if let Some(exe_path) = find_exe_in_dir(&cleaned, &app_name) {
-                                    resolved_path = Some(exe_path);
-                                }
-                            }
-                        }
-                    }
-
-                    if resolved_path.is_none() {
-                        if let Some(un_path) = un.take() {
-                            if let Some(cleaned) = clean_registry_path(&un_path) {
-                                if let Some(parent) = Path::new(&cleaned).parent() {
-                                    if parent.exists() {
-                                        if let Some(exe_path) = find_exe_in_dir(
-                                            &parent.to_string_lossy(),
-                                            &app_name,
-                                        ) {
-                                            resolved_path = Some(exe_path);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    if let Some(path) = resolved_path {
-
-                        if !Path::new(&path).is_file() {
-                            return;
-                        }
-
-                        let path_key = path.to_lowercase();
-                        if seen_paths.contains(&path_key) {
-                            return;
-                        }
-                        seen.insert(key);
-                        seen_paths.insert(path_key);
-                        entries.push(SearchEntry {
-                            name_lower: app_name.to_lowercase().into_boxed_str(),
-                            path,
-                            kind: KIND_APP,
-                        });
-                    }
-                }
-            };
-
-            for line in text.lines() {
-                let trimmed = line.trim();
-                if trimmed.starts_with("HKEY_") {
-                    process_entry(
-                        &mut current_name,
-                        &mut current_icon,
-                        &mut current_location,
-                        &mut current_uninstall,
-                    );
-                    continue;
-                }
-
-                let parts: Vec<&str> = if trimmed.contains("REG_SZ") {
-                    trimmed.splitn(2, "REG_SZ").collect()
-                } else if trimmed.contains("REG_EXPAND_SZ") {
-                    trimmed.splitn(2, "REG_EXPAND_SZ").collect()
-                } else {
-                    Vec::new()
-                };
-
-                if parts.len() == 2 {
-                    let val_name = parts[0].trim().to_lowercase();
-                    let val_content = parts[1].trim().to_string();
-
-                    match val_name.as_str() {
-                        "displayname" => current_name = Some(val_content),
-                        "displayicon" => current_icon = Some(val_content),
-                        "installlocation" => current_location = Some(val_content),
-                        "uninstallstring" => current_uninstall = Some(val_content),
-                        _ => {}
-                    }
-                }
-            }
-
-            process_entry(
-                &mut current_name,
-                &mut current_icon,
-                &mut current_location,
-                &mut current_uninstall,
-            );
+    for app in uninstall_entries() {
+        let Some(key) = app.name.as_ref().map(|n| n.to_lowercase()) else {
+            continue;
+        };
+        if seen.contains(&key) {
+            continue;
         }
+        let Some((app_name, path)) = resolve_uninstall_entry(app) else {
+            continue;
+        };
+        if !seen_paths.insert(path.to_lowercase()) {
+            continue;
+        }
+        seen.insert(key);
+        entries.push(SearchEntry {
+            name_lower: app_name.to_lowercase().into_boxed_str(),
+            path,
+            kind: KIND_APP,
+        });
     }
 }
 
@@ -881,6 +977,32 @@ mod tests {
         fs::remove_dir_all(&root).unwrap();
     }
 
+    #[test]
+    fn expands_environment_variables_like_reg_expand_sz() {
+        std::env::set_var("UMBRA_TEST_DIR", "C:\\Tools");
+        assert_eq!(expand_env_vars("%UMBRA_TEST_DIR%\\app.exe,0"), "C:\\Tools\\app.exe,0");
+        assert_eq!(expand_env_vars("%UMBRA_MISSING_VAR%\\x"), "%UMBRA_MISSING_VAR%\\x");
+        assert_eq!(expand_env_vars("100% done"), "100% done");
+        assert_eq!(expand_env_vars("%%"), "%%");
+        assert_eq!(expand_env_vars("plain"), "plain");
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn registry_uninstall_entries_are_readable() {
+        let entries = uninstall_entries();
+        assert!(entries.iter().any(|e| e.name.is_some()));
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn app_exe_is_never_guessed_inside_windows_folder() {
+        let system32 = system_tool_dirs().remove(0);
+        assert!(is_inside_system_root(&system32));
+        assert_eq!(find_exe_in_dir(&system32.to_string_lossy(), "Application Compatibility Database"), None);
+        assert!(!is_inside_system_root(Path::new("C:\\Program Files\\WinRAR")));
+    }
+
     #[cfg(target_os = "windows")]
     #[test]
     fn common_windows_tools_are_found() {
@@ -892,3 +1014,4 @@ mod tests {
         }
     }
 }
+
