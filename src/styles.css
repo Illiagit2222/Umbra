@@ -391,6 +391,14 @@ body {
   position: relative;
   z-index: 1;
 }
+/* The animated example queries are the placeholder. Without this the input's
+   -webkit-text-fill-color paints them exactly like typed text. */
+#search-input::placeholder {
+  color: var(--text-dim);
+  -webkit-text-fill-color: var(--text-dim);
+  font-weight: var(--weight-regular);
+  opacity: 1;
+}
 #index-spinner {
   height: var(--btn);
   width: 0;
