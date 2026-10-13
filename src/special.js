@@ -15,6 +15,24 @@ function showOpenCard(url, label) {
     invoke("launch_item", { path: url });
     hideWindow();
   });
+  // Enter launches selectableItems[selectedIndex]; without this it opened the previous search's top result.
+  selectableItems = [{ name: "", path: url, kind: "open", icon_data: null, pinned: false }];
+  selectedIndex = 0;
+}
+const OPEN_TLDS = new Set(["com", "org", "net", "io", "dev", "me", "gg", "tv", "co", "uk", "de", "info", "xyz", "ru", "su", "ua", "by", "kz", "рф"]);
+// A URL or an absolute path typed into the search box, normalized for launch_item; null for ordinary searches.
+function parseOpenTarget(q) {
+  const s = q.replace(/^"(.+)"$/, "$1");
+  if (/^[a-z]:[\\/]/i.test(s) || /^\\\\[^\\\s]+\\[^\\]+/.test(s)) return s.replace(/\//g, "\\");
+  if (/\s/.test(s)) return null;
+  if (/^https?:\/\/\S+$/i.test(s)) return s;
+  if (/^file:\/\/\/[a-z]:/i.test(s)) {
+    try { return decodeURIComponent(s.slice(8)).replace(/\//g, "\\"); } catch { return null; }
+  }
+  if (/^(localhost|\d{1,3}(\.\d{1,3}){3})(:\d+)?(\/\S*)?$/i.test(s)) return `http://${s}`;
+  const host = s.match(/^((?:[a-z0-9-]+\.)+([a-zа-я]{2,}))(:\d+)?(\/\S*)?$/i);
+  if (host && (/^www\./i.test(s) || host[4] || OPEN_TLDS.has(host[2].toLowerCase()))) return `https://${s}`;
+  return null;
 }
 function handleSpecialCommand(query) {
   const q = query.trim();
@@ -89,6 +107,7 @@ function handleSpecialCommand(query) {
       { name: "!so <query>", desc: "Search StackOverflow", fill: "!so " },
       { name: "kill <proc>", desc: "Kill process", fill: "kill " },
       { name: "shutdown|restart|sleep", desc: "Power actions", fill: "" },
+      { name: "<link or path>", desc: "Open a URL, file or folder", fill: "" },
     ];
     resultsSection.classList.remove("hidden");
     specialSection.classList.add("hidden");
@@ -143,6 +162,11 @@ function handleSpecialCommand(query) {
     };
     const url = sites[site] || `https://www.google.com/search?q=${site}+`;
     showOpenCard(`${url}${encodeURIComponent(query)}`, `open in ${site}: ${query}`);
+    return true;
+  }
+  const target = parseOpenTarget(q);
+  if (target) {
+    showOpenCard(target, `open ${target}`);
     return true;
   }
   return false;
