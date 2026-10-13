@@ -1,22 +1,16 @@
-
-
 const RUN_KEY: &str = "Software\\Microsoft\\Windows\\CurrentVersion\\Run";
-const VALUE_NAME: &str = "SpotlightSearch";
-
+const VALUE_NAME: &str = "Umbra";
+/// Pre-0.1.3 value name, removed once the current one has been written.
+const LEGACY_VALUE_NAME: &str = "SpotlightSearch";
 #[cfg(target_os = "windows")]
-fn current_reg_value() -> Option<String> {
+fn read_reg_value(name: &str) -> Option<String> {
     use windows_sys::Win32::System::Registry::*;
-
     unsafe {
         let subkey: Vec<u16> = RUN_KEY
             .encode_utf16()
             .chain(std::iter::once(0))
             .collect();
-        let name: Vec<u16> = VALUE_NAME
-            .encode_utf16()
-            .chain(std::iter::once(0))
-            .collect();
-
+        let name: Vec<u16> = name.encode_utf16().chain(std::iter::once(0)).collect();
         let mut hkey: HKEY = std::ptr::null_mut();
         let res = RegOpenKeyExW(HKEY_CURRENT_USER, subkey.as_ptr(), 0, KEY_READ, &mut hkey);
         if res != 0 || hkey.is_null() {
@@ -60,16 +54,38 @@ fn current_reg_value() -> Option<String> {
         out
     }
 }
-
+#[cfg(target_os = "windows")]
+fn delete_reg_value(name: &str) {
+    use windows_sys::Win32::System::Registry::*;
+    unsafe {
+        let subkey: Vec<u16> = RUN_KEY
+            .encode_utf16()
+            .chain(std::iter::once(0))
+            .collect();
+        let name: Vec<u16> = name.encode_utf16().chain(std::iter::once(0)).collect();
+        let mut hkey: HKEY = std::ptr::null_mut();
+        let res = RegOpenKeyExW(
+            HKEY_CURRENT_USER,
+            subkey.as_ptr(),
+            0,
+            KEY_READ | KEY_SET_VALUE,
+            &mut hkey,
+        );
+        if res == 0 && !hkey.is_null() {
+            RegDeleteValueW(hkey, name.as_ptr());
+            RegCloseKey(hkey);
+        }
+    }
+}
 pub fn is_enabled() -> bool {
     #[cfg(target_os = "windows")]
     {
-        match (current_reg_value(), std::env::current_exe()) {
+        let stored = read_reg_value(VALUE_NAME).or_else(|| read_reg_value(LEGACY_VALUE_NAME));
+        match (stored, std::env::current_exe()) {
             (Some(v), Ok(p)) => {
                 let p = p.to_string_lossy().to_string();
                 v == p || v == format!("\"{}\"", p)
             }
-
             (Some(_), Err(_)) => true,
             _ => false,
         }
@@ -79,69 +95,42 @@ pub fn is_enabled() -> bool {
         false
     }
 }
-
 pub fn set_enabled(enable: bool) {
     #[cfg(target_os = "windows")]
     {
-        use windows_sys::Win32::System::Registry::*;
-
         if !enable {
-            unsafe {
-                let subkey: Vec<u16> = RUN_KEY
-                    .encode_utf16()
-                    .chain(std::iter::once(0))
-                    .collect();
-                let name: Vec<u16> = VALUE_NAME
-                    .encode_utf16()
-                    .chain(std::iter::once(0))
-                    .collect();
-                let mut hkey: HKEY = std::ptr::null_mut();
-                let res = RegOpenKeyExW(
-                    HKEY_CURRENT_USER,
-                    subkey.as_ptr(),
-                    0,
-                    KEY_READ | KEY_SET_VALUE,
-                    &mut hkey,
-                );
-                if res == 0 && !hkey.is_null() {
-                    RegDeleteValueW(hkey, name.as_ptr());
-                    RegCloseKey(hkey);
-                }
-            }
+            delete_reg_value(VALUE_NAME);
+            delete_reg_value(LEGACY_VALUE_NAME);
             return;
         }
         ensure_autostart();
     }
-    #[allow(unreachable_code)]
+    #[cfg(not(target_os = "windows"))]
     {
         let _ = enable;
     }
 }
-
 pub fn ensure_autostart() {
     #[cfg(target_os = "windows")]
     {
         use windows_sys::Win32::System::Registry::*;
-
         unsafe {
             let exe_path = match std::env::current_exe() {
                 Ok(p) => p,
                 Err(_) => return,
             };
             let path_str = exe_path.to_string_lossy().to_string();
-            
+
             let reg_value = if path_str.contains(' ') {
                 format!("\"{}\"", path_str)
             } else {
                 path_str.clone()
             };
             let wide: Vec<u16> = reg_value.encode_utf16().chain(std::iter::once(0)).collect();
-
             let subkey: Vec<u16> = "Software\\Microsoft\\Windows\\CurrentVersion\\Run"
                 .encode_utf16()
                 .chain(std::iter::once(0))
                 .collect();
-
             let mut hkey: HKEY = std::ptr::null_mut();
             let res = RegOpenKeyExW(
                 HKEY_CURRENT_USER,
@@ -151,7 +140,7 @@ pub fn ensure_autostart() {
                 &mut hkey,
             );
             if res == 0 && !hkey.is_null() {
-                let name: Vec<u16> = "SpotlightSearch"
+                let name: Vec<u16> = VALUE_NAME
                     .encode_utf16()
                     .chain(std::iter::once(0))
                     .collect();
@@ -165,7 +154,6 @@ pub fn ensure_autostart() {
                     std::ptr::null_mut(),
                     &mut data_size,
                 );
-
                 let mut existing_matches = false;
                 if check_res == 0 && value_type == REG_SZ && data_size > 0 {
                     let mut buf = vec![0u8; data_size as usize];
@@ -188,9 +176,7 @@ pub fn ensure_autostart() {
                         existing_matches = existing == reg_value;
                     }
                 }
-
                 let should_write = check_res != 0 || value_type != REG_SZ || !existing_matches;
-
                 if should_write {
                     RegSetValueExW(
                         hkey,
@@ -204,5 +190,7 @@ pub fn ensure_autostart() {
                 RegCloseKey(hkey);
             }
         }
+        // Drop the pre-0.1.3 Run value so the app never starts twice.
+        delete_reg_value(LEGACY_VALUE_NAME);
     }
 }

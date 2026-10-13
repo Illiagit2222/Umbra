@@ -1,18 +1,13 @@
-
-
 use crate::{autostart, config, indexer, pins, search};
 use tauri::Manager;
-
 #[tauri::command]
 pub fn get_index_status() -> usize {
     indexer::get_indexed_count()
 }
-
 #[tauri::command]
 pub fn reindex(app: tauri::AppHandle) {
     indexer::init_index_with_progress(app);
 }
-
 #[tauri::command]
 pub fn get_pins() -> Vec<search::SearchResult> {
     pins::load_pins()
@@ -28,7 +23,6 @@ pub fn get_pins() -> Vec<search::SearchResult> {
         })
         .collect()
 }
-
 #[tauri::command]
 pub fn add_pin(name: String, path: String, kind: String) -> bool {
     pins::add_pin(&search::SearchResult {
@@ -41,27 +35,23 @@ pub fn add_pin(name: String, path: String, kind: String) -> bool {
         score: search::ScoreKey::default(),
     })
 }
-
 #[tauri::command]
 pub fn remove_pin(path: String) -> bool {
     pins::remove_pin(&path)
 }
-
 #[tauri::command]
 pub fn reorder_pins(ordered_paths: Vec<String>) -> bool {
     pins::reorder_pins(ordered_paths)
 }
-
 #[tauri::command]
 pub fn get_hotkey() -> String {
     let hotkey = config::get_hotkey();
     if crate::keyboard_hook::is_supported_hotkey(&hotkey) {
         hotkey
     } else {
-        "Alt+Space".to_string()
+        config::DEFAULT_HOTKEY.to_string()
     }
 }
-
 #[tauri::command]
 pub fn set_hotkey(_app: tauri::AppHandle, key: String) -> Result<String, String> {
     let k = key.trim();
@@ -70,43 +60,35 @@ pub fn set_hotkey(_app: tauri::AppHandle, key: String) -> Result<String, String>
             "Hotkey must be a modifier (Ctrl, Alt, Shift, Super) plus a letter, digit, F1-F12, Space or arrow key, e.g. Ctrl+Shift+P".to_string(),
         );
     }
-
     config::set_hotkey(k);
     crate::keyboard_hook::update_hotkey();
-
     Ok("Hotkey applied".to_string())
 }
-
 #[tauri::command]
 pub fn get_zoom() -> f64 {
     config::get_zoom()
 }
-
 #[tauri::command]
 pub fn set_zoom(zoom: f64) -> Result<String, String> {
     let z = zoom.clamp(0.5, 2.0);
     config::set_zoom(z);
     Ok(format!("Zoom set to {}", z))
 }
-
 #[tauri::command]
 pub fn get_autostart() -> bool {
     autostart::is_enabled()
 }
-
 #[tauri::command]
 pub fn set_autostart(enable: bool) -> bool {
     config::set_autostart(enable);
     autostart::set_enabled(enable);
     autostart::is_enabled()
 }
-
 #[derive(serde::Serialize)]
 pub struct Placement {
     pub align: String,
     pub monitor: i32,
 }
-
 #[derive(serde::Serialize)]
 pub struct MonitorInfo {
     pub index: i32,
@@ -115,13 +97,11 @@ pub struct MonitorInfo {
     pub height: u32,
     pub primary: bool,
 }
-
 #[tauri::command]
 pub fn get_placement() -> Placement {
     let (align, monitor) = config::get_placement();
     Placement { align, monitor }
 }
-
 #[tauri::command]
 pub fn set_placement(align: String, monitor: i32) -> Placement {
     let a = if config::is_valid_align(&align) { align } else { "cc".to_string() };
@@ -129,7 +109,6 @@ pub fn set_placement(align: String, monitor: i32) -> Placement {
     let (align, monitor) = config::get_placement();
     Placement { align, monitor }
 }
-
 #[tauri::command]
 pub fn list_monitors(app: tauri::AppHandle) -> Vec<MonitorInfo> {
     let Some(window) = app.get_webview_window("main") else {
@@ -151,48 +130,39 @@ pub fn list_monitors(app: tauri::AppHandle) -> Vec<MonitorInfo> {
         })
         .collect()
 }
-
 #[tauri::command]
 pub fn get_theme() -> config::ThemeConfig {
     config::get_theme()
 }
-
 #[tauri::command]
 pub fn set_theme(theme: config::ThemeConfig) -> config::ThemeConfig {
     config::set_theme(theme)
 }
-
 #[tauri::command]
 pub fn get_language() -> String {
     config::get_language()
 }
-
 #[tauri::command]
 pub fn set_language(lang: String) -> String {
     config::set_language(lang)
 }
-
 #[tauri::command]
 pub fn get_index_excludes() -> Vec<String> {
     config::get_index_excludes()
 }
-
 #[tauri::command]
 pub fn set_index_excludes(excludes: Vec<String>) -> Vec<String> {
     config::set_index_excludes(excludes);
     config::get_index_excludes()
 }
-
 #[tauri::command]
 pub fn get_index_defaults() -> Vec<String> {
     config::get_default_index_excludes()
 }
-
 #[tauri::command]
 pub fn get_disabled_kinds() -> Vec<u8> {
     config::get_disabled_kinds()
 }
-
 #[tauri::command]
 pub fn set_kind_enabled(kind: u8, enabled: bool) -> Vec<u8> {
     let mut kinds = config::get_disabled_kinds();
@@ -208,17 +178,14 @@ pub fn set_kind_enabled(kind: u8, enabled: bool) -> Vec<u8> {
     config::set_disabled_kinds(kinds);
     config::get_disabled_kinds()
 }
-
 #[tauri::command]
 pub fn get_available_drives() -> Vec<String> {
     crate::indexer::get_available_drives()
 }
-
 #[tauri::command]
 pub fn get_disabled_drives() -> Vec<String> {
     config::get_disabled_drives()
 }
-
 #[tauri::command]
 pub fn set_drive_enabled(drive: String, enabled: bool) -> Vec<String> {
     let mut drives = config::get_disabled_drives();
@@ -233,51 +200,45 @@ pub fn set_drive_enabled(drive: String, enabled: bool) -> Vec<String> {
     config::set_disabled_drives(drives);
     config::get_disabled_drives()
 }
-
 #[tauri::command]
-pub fn open_themes_folder(app: tauri::AppHandle) -> Result<(), String> {
-    let mut path = app.path().app_config_dir().map_err(|e| e.to_string())?;
-    path.push("themes");
-    if !path.exists() {
-        std::fs::create_dir_all(&path).map_err(|e| e.to_string())?;
-    }
+pub fn open_themes_folder() -> Result<(), String> {
+    let path = crate::paths::themes_dir();
     std::process::Command::new("explorer")
-        .arg(path.to_string_lossy().as_ref())
+        .arg(path)
         .spawn()
         .map_err(|e| e.to_string())?;
     Ok(())
 }
-
 #[derive(serde::Serialize)]
 pub struct CustomTheme {
     pub name: String,
     pub css: String,
 }
-
 #[tauri::command]
-pub fn get_custom_themes(app: tauri::AppHandle) -> Vec<CustomTheme> {
+pub fn get_custom_themes() -> Vec<CustomTheme> {
     let mut themes = Vec::new();
-    if let Ok(mut path) = app.path().app_config_dir() {
-        path.push("themes");
-        if let Ok(entries) = std::fs::read_dir(path) {
-            for entry in entries.flatten() {
-                if let Ok(file_type) = entry.file_type() {
-                    if file_type.is_file() {
-                        let file_path = entry.path();
-                        if file_path.extension().and_then(|s| s.to_str()) == Some("css") {
-                            if let Some(name) = file_path.file_stem().and_then(|s| s.to_str()) {
-                                if let Ok(css) = std::fs::read_to_string(&file_path) {
-                                    themes.push(CustomTheme {
-                                        name: name.to_string(),
-                                        css,
-                                    });
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+    let Ok(entries) = std::fs::read_dir(crate::paths::themes_dir()) else {
+        return themes;
+    };
+    for entry in entries.flatten() {
+        let file_path = entry.path();
+        let is_file = entry.file_type().map(|t| t.is_file()).unwrap_or(false);
+        if !is_file || file_path.extension().and_then(|s| s.to_str()) != Some("css") {
+            continue;
+        }
+        let Some(name) = file_path.file_stem().and_then(|s| s.to_str()) else {
+            continue;
+        };
+        if let Ok(css) = std::fs::read_to_string(&file_path) {
+            themes.push(CustomTheme {
+                name: name.to_string(),
+                css,
+            });
         }
     }
     themes
+}
+#[tauri::command]
+pub fn get_config_dir() -> String {
+    crate::paths::config_dir().to_string_lossy().to_string()
 }

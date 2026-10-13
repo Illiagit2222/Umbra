@@ -1,8 +1,6 @@
-
-
 const TRANSLATIONS = {
   en: {
-    
+
     dragTip: "Drag to move · Double-click to center · Right-click to pin",
     resizeTip: "Resize window",
     clearTip: "Clear search",
@@ -11,16 +9,13 @@ const TRANSLATIONS = {
     searchPlaceholder: "",
     defaultHint: "Type to search · Tab completes · Right-click for actions · !help for commands",
     noResults: "No results found",
-
     ctxOpen: "Open",
     ctxAdmin: "Open as admin",
     ctxDirectory: "Open directory",
     ctxCopy: "Copy path",
-
     groupGeneral: "General & System",
     groupAppearance: "Appearance & Theme",
     groupIndexing: "Indexing & Content",
-
     lblLanguage: "Language",
     lblHotkey: "Global Hotkey",
     lblAlign: "Window Position",
@@ -31,7 +26,13 @@ const TRANSLATIONS = {
     lblAccent: "Accent Color",
     lblBg: "Background Color",
     lblRadius: "Card Corner Radius",
-    lblRowH: "Row Height",
+    lblDensity: "Density",
+    densityFull: "Full",
+    densityCompactResults: "Compact",
+    densityCompactFull: "All",
+    densityFullTip: "Roomy rows and a large search bar",
+    densityCompactResultsTip: "Smaller rows, the search bar stays large",
+    densityCompactFullTip: "Smaller rows and a compact search bar",
     lblOpacity: "Card Opacity",
     lblGlow: "Glow Effect",
     lblBorder: "Card Border",
@@ -40,7 +41,6 @@ const TRANSLATIONS = {
     lblIndex: "Indexed Files",
     lblContent: "Content Categories",
     lblRebuild: "Rebuild Index",
-
     pressKeys: "Press keys…",
     hotkeyModifierError: "Include a modifier: Ctrl, Alt, Shift or Super",
     autostartOn: "Autostart enabled",
@@ -58,14 +58,12 @@ const TRANSLATIONS = {
     itemsCount: "items",
     stillIndexing: "Still indexing…",
     hotkeyApplied: "Hotkey updated",
-
     groupFolders: "Folders",
     groupPrograms: "Applications",
     groupMedia: "Media Files",
     groupFiles: "Documents & Files",
     groupSystem: "System & Libraries",
     selectAll: "Select All",
-
     helpTitle: "Available Commands",
     helpZoom: "Change UI zoom level",
     helpYt: "Search YouTube",
@@ -87,7 +85,7 @@ const TRANSLATIONS = {
     helpCurr: "Live currency converter",
   },
   ru: {
-    
+
     dragTip: "Перетащите · Двойной клик: центр · Правый клик: закрепить",
     resizeTip: "Изменить размер",
     clearTip: "Очистить поиск",
@@ -96,16 +94,13 @@ const TRANSLATIONS = {
     searchPlaceholder: "",
     defaultHint: "Вводите текст · Tab — автодополнение · Правый клик — действия · !help — команды",
     noResults: "Ничего не найдено",
-
     ctxOpen: "Открыть",
     ctxAdmin: "Запустить от админа",
     ctxDirectory: "Открыть папку",
     ctxCopy: "Скопировать путь",
-
     groupGeneral: "Основное и Система",
     groupAppearance: "Внешний вид и Тема",
     groupIndexing: "Индексация и Поиск",
-
     lblLanguage: "Язык интерфейса",
     lblHotkey: "Горячая клавиша",
     lblAlign: "Привязка окна",
@@ -116,7 +111,13 @@ const TRANSLATIONS = {
     lblAccent: "Цвет акцента",
     lblBg: "Цвет фона",
     lblRadius: "Скругление карточек",
-    lblRowH: "Высота строк",
+    lblDensity: "Плотность",
+    densityFull: "Полный",
+    densityCompactResults: "Компакт",
+    densityCompactFull: "Всё",
+    densityFullTip: "Просторные строки и крупная строка поиска",
+    densityCompactResultsTip: "Узкие строки, строка поиска остаётся крупной",
+    densityCompactFullTip: "Узкие строки и компактная строка поиска",
     lblOpacity: "Прозрачность",
     lblGlow: "Эффект свечения",
     lblBorder: "Рамка карточек",
@@ -125,7 +126,6 @@ const TRANSLATIONS = {
     lblIndex: "Проиндексировано",
     lblContent: "Категории файлов",
     lblRebuild: "Переиндексировать",
-
     pressKeys: "Нажмите клавиши…",
     hotkeyModifierError: "Добавьте модификатор: Ctrl, Alt, Shift или Super",
     autostartOn: "Автозапуск включен",
@@ -143,14 +143,12 @@ const TRANSLATIONS = {
     itemsCount: "элементов",
     stillIndexing: "Индексация…",
     hotkeyApplied: "Горячая клавиша обновлена",
-
     groupFolders: "Папки",
     groupPrograms: "Приложения",
     groupMedia: "Медиафайлы",
     groupFiles: "Документы и файлы",
     groupSystem: "Системные файлы и библиотеки",
     selectAll: "Выбрать всё",
-
     helpTitle: "Доступные команды",
     helpZoom: "Изменить масштаб UI",
     helpYt: "Поиск в YouTube",
@@ -180,16 +178,13 @@ const TRANSLATIONS = {
     searchPlaceholder: "",
     defaultHint: "Tippen zum Suchen · Tab zur Vervollständigung · Rechtsklick für Aktionen · !help für Befehle",
     noResults: "Keine Ergebnisse gefunden",
-
     ctxOpen: "Öffnen",
     ctxAdmin: "Als Administrator ausführen",
     ctxDirectory: "Ordner öffnen",
     ctxCopy: "Pfad kopieren",
-
     groupGeneral: "Allgemein & System",
     groupAppearance: "Aussehen & Design",
     groupIndexing: "Indizierung & Suche",
-
     lblLanguage: "Sprache",
     lblHotkey: "Globaler Hotkey",
     lblAlign: "Fensterposition",
@@ -200,7 +195,13 @@ const TRANSLATIONS = {
     lblAccent: "Akzentfarbe",
     lblBg: "Hintergrundfarbe",
     lblRadius: "Eckenradius",
-    lblRowH: "Zeilenhöhe",
+    lblDensity: "Dichte",
+    densityFull: "Voll",
+    densityCompactResults: "Kompakt",
+    densityCompactFull: "Alles",
+    densityFullTip: "Große Zeilen und breite Suchleiste",
+    densityCompactResultsTip: "Kleinere Zeilen, Suchleiste bleibt breit",
+    densityCompactFullTip: "Kleinere Zeilen und kompakte Suchleiste",
     lblOpacity: "Transparenz",
     lblGlow: "Glüheffekt",
     lblBorder: "Kartenrahmen",
@@ -209,7 +210,6 @@ const TRANSLATIONS = {
     lblIndex: "Indizierte Dateien",
     lblContent: "Inhaltskategorien",
     lblRebuild: "Neu erstellen",
-
     pressKeys: "Tasten drücken…",
     hotkeyModifierError: "Verwenden Sie einen Modifikator: Strg, Alt, Shift oder Super",
     autostartOn: "Autostart aktiviert",
@@ -227,20 +227,18 @@ const TRANSLATIONS = {
     itemsCount: "Elemente",
     stillIndexing: "Wird noch indiziert…",
     hotkeyApplied: "Hotkey aktualisiert",
-
     groupFolders: "Ordner",
     groupPrograms: "Anwendungen",
     groupMedia: "Mediendateien",
     groupFiles: "Dokumente & Dateien",
     groupSystem: "System & Bibliotheken",
     selectAll: "Alles auswählen",
-
     helpTitle: "Verfügbare Befehle",
     helpKill: "Prozess beenden",
     helpPower: "Ausschalten / Neustart / Standby",
   },
   ja: {
-    
+
     dragTip: "ドラッグで移動 · ダブルクリックで中央配置 · 右クリックで pinned",
     resizeTip: "サイズ変更",
     clearTip: "クリア",
@@ -249,16 +247,13 @@ const TRANSLATIONS = {
     searchPlaceholder: "",
     defaultHint: "入力して検索 · Tabで補完 · 右クリックで操作 · !helpでコマンド一覧",
     noResults: "結果が見つかりません",
-
     ctxOpen: "開く",
     ctxAdmin: "管理者として実行",
     ctxDirectory: "フォルダを開く",
     ctxCopy: "パスをコピー",
-
     groupGeneral: "一般・システム",
     groupAppearance: "外観・テーマ",
     groupIndexing: "インデックス・検索",
-
     lblLanguage: "表示言語",
     lblHotkey: "グローバルホットキー",
     lblAlign: "ウィンドウ配置",
@@ -269,7 +264,13 @@ const TRANSLATIONS = {
     lblAccent: "アクセントカラー",
     lblBg: "背景色",
     lblRadius: "カードの角丸",
-    lblRowH: "行の高さ",
+    lblDensity: "表示密度",
+    densityFull: "標準",
+    densityCompactResults: "結果をコンパクトに",
+    densityCompactFull: "すべてコンパクト",
+    densityFullTip: "ゆったりした行と大きな検索バー",
+    densityCompactResultsTip: "行を小さく、検索バーはそのまま",
+    densityCompactFullTip: "行と検索バーの両方をコンパクトに",
     lblOpacity: "不透明度",
     lblGlow: "発光エフェクト",
     lblBorder: "枠線",
@@ -278,7 +279,6 @@ const TRANSLATIONS = {
     lblIndex: "インデックス数",
     lblContent: "検索カテゴリ",
     lblRebuild: "再構築",
-
     pressKeys: "キーを押してください…",
     hotkeyModifierError: "修飾キー（Ctrl, Alt, Shift, Super）を含めてください",
     autostartOn: "自動起動有効",
@@ -296,14 +296,12 @@ const TRANSLATIONS = {
     itemsCount: "件",
     stillIndexing: "インデックス作成中…",
     hotkeyApplied: "ホットキーを更新しました",
-
     groupFolders: "フォルダ",
     groupPrograms: "アプリケーション",
     groupMedia: "メディアファイル",
     groupFiles: "ドキュメント・ファイル",
     groupSystem: "システムとライブラリ",
     selectAll: "すべて選択",
-
     helpTitle: "利用可能なコマンド",
     helpZoom: "UIズームの変更",
     helpYt: "YouTube検索",
@@ -325,29 +323,25 @@ const TRANSLATIONS = {
     helpCurr: "リアルタイム通貨換算",
   },
 };
-
 let currentLang = "en";
-
 function getLang() {
   return currentLang;
 }
-
 function setLanguage(lang) {
   if (TRANSLATIONS[lang]) {
     currentLang = lang;
   } else {
     currentLang = "en";
   }
-  
+
   if (document.startViewTransition) {
     document.startViewTransition(() => updateUIStrings());
   } else {
     updateUIStrings();
   }
-  
+
   return currentLang;
 }
-
 function t(key, params = {}) {
   const dict = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
   let str = dict[key] || TRANSLATIONS.en[key] || key;
@@ -356,35 +350,43 @@ function t(key, params = {}) {
   }
   return str;
 }
-
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+function fadeIn(el) {
+  if (reduceMotion.matches) return;
+  el.classList.remove("i18n-fade");
+  void el.offsetWidth; // reflow so the animation replays on every change
+  el.classList.add("i18n-fade");
+  el.addEventListener("animationend", () => el.classList.remove("i18n-fade"), { once: true });
+}
 function updateUIStrings() {
-  const elems = document.querySelectorAll("[data-i18n]");
-  elems.forEach((el) => {
+  // Only strings that actually differ are rewritten and animated, so labels
+  // that read identically in both languages stay completely still.
+  document.querySelectorAll("[data-i18n]").forEach((el) => {
     const key = el.dataset.i18n;
-    if (key) {
-      el.textContent = t(key);
-    }
+    if (!key) return;
+    const next = t(key);
+    if (el.textContent === next) return;
+    el.textContent = next;
+    fadeIn(el);
   });
-
-  const tips = document.querySelectorAll("[data-i18n-tip]");
-  tips.forEach((el) => {
+  document.querySelectorAll("[data-i18n-tip]").forEach((el) => {
     const key = el.dataset.i18nTip;
-    if (key) {
-      el.dataset.tip = t(key);
-    }
+    if (!key) return;
+    const next = t(key);
+    if (el.dataset.tip === next) return;
+    el.dataset.tip = next;
+    fadeIn(el);
   });
-
-  const placeholders = document.querySelectorAll("[data-i18n-placeholder]");
-  placeholders.forEach((el) => {
+  document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => {
     const key = el.dataset.i18nPlaceholder;
-    if (key) {
-      el.placeholder = t(key);
-    }
+    if (!key) return;
+    const next = t(key);
+    if (el.placeholder === next) return;
+    el.placeholder = next;
+    fadeIn(el);
   });
-
   window.dispatchEvent(new CustomEvent("language-changed", { detail: { lang: currentLang } }));
 }
-
 window.i18n = {
   getLang,
   setLanguage,

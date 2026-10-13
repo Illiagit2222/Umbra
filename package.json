@@ -1,13 +1,29 @@
 {
-  "name": "search",
+
+  "name": "umbra",
+
   "private": true,
-  "version": "0.1.2",
+
+  "version": "0.1.4",
+
+  "description": "Lightning fast system search tool",
+
   "type": "module",
+
   "scripts": {
-    "tauri": "cargo tauri",
-    "dev": "cargo tauri dev",
-    "build": "cargo tauri build",
-    "build:fast": "cargo tauri build --debug"
+
+    "dev": "tauri dev",
+
+    "build": "tauri build",
+
+    "build:fast": "tauri build --debug"
+
   },
-  "devDependencies": {}
+
+  "devDependencies": {
+
+    "@tauri-apps/cli": "^2"
+
+  }
+
 }

@@ -1,30 +1,20 @@
 use serde::{Deserialize, Serialize};
-use std::fs;
 use std::path::PathBuf;
 use std::sync::{LazyLock, Mutex};
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Pin {
     pub name: String,
     pub path: String,
     pub kind: String,
 }
-
 struct PinsState {
     path: PathBuf,
     pins: Vec<Pin>,
 }
-
 static PINS_STATE: LazyLock<Mutex<Option<PinsState>>> = LazyLock::new(|| Mutex::new(None));
-
 fn pins_file_path() -> PathBuf {
-    let mut path = dirs::config_dir().unwrap_or_else(|| PathBuf::from("."));
-    path.push("SpotlightSearch");
-    fs::create_dir_all(&path).ok();
-    path.push("pins.json");
-    path
+    crate::paths::pins_file()
 }
-
 fn ensure_loaded() {
     let mut guard = PINS_STATE.lock().unwrap();
     if guard.is_some() {
@@ -34,13 +24,11 @@ fn ensure_loaded() {
     let pins = crate::storage::load_json(&path);
     *guard = Some(PinsState { path, pins });
 }
-
 pub fn load_pins() -> Vec<Pin> {
     ensure_loaded();
     let guard = PINS_STATE.lock().unwrap();
     guard.as_ref().unwrap().pins.clone()
 }
-
 pub fn add_pin(result: &crate::search::SearchResult) -> bool {
     ensure_loaded();
     let mut guard = PINS_STATE.lock().unwrap();
@@ -61,7 +49,6 @@ pub fn add_pin(result: &crate::search::SearchResult) -> bool {
     }
     true
 }
-
 pub fn remove_pin(path: &str) -> bool {
     ensure_loaded();
     let mut guard = PINS_STATE.lock().unwrap();
@@ -79,7 +66,6 @@ pub fn remove_pin(path: &str) -> bool {
     }
     true
 }
-
 pub fn reorder_pins(ordered_paths: Vec<String>) -> bool {
     ensure_loaded();
     let mut guard = PINS_STATE.lock().unwrap();

@@ -1,11 +1,10 @@
-
-
 mod search;
 mod settings;
 mod system;
+mod updater;
 mod window;
-
 pub use search::*;
 pub use settings::*;
 pub use system::*;
+pub use updater::*;
 pub use window::*;

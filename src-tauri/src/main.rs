@@ -1,21 +1,22 @@
 #![windows_subsystem = "windows"]
-
 mod autostart;
 mod commands;
 mod config;
 mod frecency;
 mod icons;
 mod indexer;
+mod paths;
 mod pins;
 mod search;
 mod storage;
 mod taskbar;
+mod themes;
 mod tray;
+mod updater;
+mod winhttp;
 mod keyboard_hook;
-
 use tauri::Emitter;
 use tauri::Manager;
-
 fn remove_sysmenu(window: &tauri::WebviewWindow) {
     #[cfg(target_os = "windows")]
     if let Ok(hwnd) = window.hwnd() {
@@ -37,16 +38,6 @@ fn remove_sysmenu(window: &tauri::WebviewWindow) {
         }
     }
 }
-
-pub fn show_chat_window(window: &tauri::WebviewWindow) {
-    #[cfg(target_os = "windows")]
-    taskbar::show_if_autohide();
-    commands::place_chat_window(window.app_handle());
-    let _ = window.show();
-    let _ = window.set_focus();
-    let _ = window.emit("chat-shown", ());
-}
-
 pub fn show_window(window: &tauri::WebviewWindow) {
     #[cfg(target_os = "windows")]
     taskbar::show_if_autohide();
@@ -54,67 +45,28 @@ pub fn show_window(window: &tauri::WebviewWindow) {
     let _ = window.set_focus();
     let _ = window.emit("window-shown", ());
     indexer::refresh_fast_index_async();
-
     if !config::is_pinned() {
         commands::place_window(window.app_handle());
     }
 }
-
 fn main() {
     let _ = rayon::ThreadPoolBuilder::new().num_threads(3).build_global();
     tauri::Builder::default()
-
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             if let Some(w) = app.get_webview_window("main") {
                 crate::show_window(&w);
             }
         }))
-        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .setup(|app| {
+            paths::migrate_legacy_config_dir();
             indexer::init_index_with_progress(app.handle().clone());
             let window = app.get_webview_window("main").unwrap();
             remove_sysmenu(&window);
-
             if let Some((x, y)) = config::pinned_position() {
                 let _ = window.set_position(tauri::PhysicalPosition::new(x, y));
             }
-
-            use tauri_plugin_global_shortcut::GlobalShortcutExt;
-
-            if let Some(chat) = app.get_webview_window("chat") {
-                remove_sysmenu(&chat);
-                let chat_win = chat.clone();
-                if let Err(e) = app.global_shortcut().on_shortcut("Ctrl+Alt+Space", move |_app, _shortcut, event| {
-                    if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
-                        if chat_win.is_visible().unwrap_or(false) {
-                            let _ = chat_win.emit("window-hide-requested", ());
-                        } else {
-                            show_chat_window(&chat_win);
-                        }
-                    }
-                }) {
-                    eprintln!("Failed to register global shortcut 'Ctrl+Alt+Space': {}", e);
-                }
-
-                let chat_focus = chat.clone();
-                chat.on_window_event(move |event| {
-                    if let tauri::WindowEvent::Focused(focused) = event {
-                        if !focused {
-                            let win = chat_focus.clone();
-                            std::thread::spawn(move || {
-                                std::thread::sleep(std::time::Duration::from_millis(150));
-                                if win.is_focused().unwrap_or(true) {
-                                    return;
-                                }
-                                let _ = win.emit("window-hide-requested", ());
-                            });
-                        }
-                    }
-                });
-            }
-
             crate::keyboard_hook::init(app.handle().clone());
-
+            themes::watch(app.handle().clone());
             let win_focus = window.clone();
             window.on_window_event(move |event| {
                 if let tauri::WindowEvent::Focused(focused) = event {
@@ -130,15 +82,12 @@ fn main() {
                     }
                 }
             });
-
             #[cfg(target_os = "windows")]
             tray::create(app)?;
-
             #[cfg(target_os = "windows")]
             if config::get_autostart() {
                 autostart::ensure_autostart();
             }
-
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -153,7 +102,6 @@ fn main() {
             commands::reorder_pins,
             commands::get_index_status,
             commands::hide_window,
-            commands::hide_chat_window,
             commands::get_icons,
             commands::recenter_window,
             commands::resize_main_window,
@@ -183,6 +131,11 @@ fn main() {
             commands::set_drive_enabled,
             commands::open_themes_folder,
             commands::get_custom_themes,
+            commands::get_app_version,
+            commands::check_for_updates,
+            commands::download_update,
+            commands::install_update,
+            commands::get_config_dir,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

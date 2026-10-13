@@ -1,10 +1,6 @@
-
-
 use crate::frecency;
-
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
-
 #[tauri::command]
 pub async fn launch_item(path: String) -> Result<String, String> {
     if !path.starts_with("http://") && !path.starts_with("https://") {
@@ -17,7 +13,6 @@ pub async fn launch_item(path: String) -> Result<String, String> {
     open::that_detached(&path).map_err(|e| format!("Failed to open: {}", e))?;
     Ok(path)
 }
-
 #[cfg(target_os = "windows")]
 #[tauri::command]
 pub async fn launch_admin(path: String) -> Result<String, String> {
@@ -26,7 +21,6 @@ pub async fn launch_admin(path: String) -> Result<String, String> {
     use windows::core::PCWSTR;
     use windows::Win32::UI::Shell::ShellExecuteW;
     use windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
-
     let wide_path: Vec<u16> = OsStr::new(&path)
         .encode_wide()
         .chain(std::iter::once(0))
@@ -35,7 +29,6 @@ pub async fn launch_admin(path: String) -> Result<String, String> {
         .encode_wide()
         .chain(std::iter::once(0))
         .collect();
-
     unsafe {
         let result = ShellExecuteW(
             None,
@@ -49,18 +42,16 @@ pub async fn launch_admin(path: String) -> Result<String, String> {
             frecency::record_usage(&path);
             Ok(path)
         } else {
-            
+
             Err(format!("ShellExecuteW failed with code {:?}", result))
         }
     }
 }
-
 #[cfg(not(target_os = "windows"))]
 #[tauri::command]
 pub async fn launch_admin(path: String) -> Result<String, String> {
     Err("Not supported on this platform".to_string())
 }
-
 #[cfg(target_os = "windows")]
 #[tauri::command]
 pub fn kill_process(name: String) -> Result<String, String> {
@@ -68,21 +59,18 @@ pub fn kill_process(name: String) -> Result<String, String> {
     if !process_name.to_lowercase().ends_with(".exe") {
         process_name.push_str(".exe");
     }
-
     let mut cmd = std::process::Command::new("taskkill");
     cmd.args(["/F", "/IM", &process_name]);
     cmd.creation_flags(0x08000000); 
     let output = cmd
         .output()
         .map_err(|e| format!("Failed to run taskkill: {}", e))?;
-
     if output.status.success() {
         Ok(format!("Killed {}", process_name))
     } else {
         Err("Failed to kill process".to_string())
     }
 }
-
 #[cfg(not(target_os = "windows"))]
 #[tauri::command]
 pub fn kill_process(name: String) -> Result<String, String> {
@@ -96,7 +84,6 @@ pub fn kill_process(name: String) -> Result<String, String> {
         Err(String::from_utf8_lossy(&output.stderr).trim().to_string())
     }
 }
-
 #[cfg(target_os = "windows")]
 fn suspend_to_sleep() {
     #[link(name = "powrprof")]
@@ -112,7 +99,6 @@ fn suspend_to_sleep() {
         }
     });
 }
-
 #[tauri::command]
 pub fn exec_power_command(command: String) -> Result<String, String> {
     let cmd = command.trim().to_lowercase();
@@ -127,7 +113,6 @@ pub fn exec_power_command(command: String) -> Result<String, String> {
         "sleep" => vec!["rundll32.exe", "powrprof.dll,SetSuspendState", "0,1,0"],
         _ => return Err(format!("Unknown power command: {}", command)),
     };
-
     let mut proc_cmd = std::process::Command::new(&args[0]);
     proc_cmd.args(&args[1..]);
     #[cfg(target_os = "windows")]
@@ -135,7 +120,6 @@ pub fn exec_power_command(command: String) -> Result<String, String> {
     let output = proc_cmd
         .output()
         .map_err(|e| format!("Failed to execute: {}", e))?;
-
     if output.status.success() {
         Ok(format!("Executed: {}", cmd))
     } else {

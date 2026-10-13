@@ -1,8 +1,5 @@
-
-
 use crate::{icons, indexer, pins, search};
 use std::collections::HashMap;
-
 #[derive(serde::Serialize)]
 pub struct SearchResponse {
     pub results: Vec<search::SearchResult>,
@@ -10,7 +7,6 @@ pub struct SearchResponse {
     pub indexed: usize,
     pub icons_ready: bool,
 }
-
 #[tauri::command]
 pub async fn search_all(_app: tauri::AppHandle, query: String) -> SearchResponse {
     if query.trim().is_empty() {
@@ -22,13 +18,10 @@ pub async fn search_all(_app: tauri::AppHandle, query: String) -> SearchResponse
             icons_ready: icons::is_precache_done(),
         };
     }
-
     let version = search::SEARCH_VERSION.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
-
     let results = tauri::async_runtime::spawn_blocking(move || crate::search::search_index(&query, version))
         .await
         .unwrap_or_default();
-
     if !search::is_current(version) {
         return SearchResponse {
             results: Vec::new(),
@@ -37,18 +30,14 @@ pub async fn search_all(_app: tauri::AppHandle, query: String) -> SearchResponse
             icons_ready: icons::is_precache_done(),
         };
     }
-
     let saved_pins = pins::load_pins();
     let pin_paths: std::collections::HashSet<String> =
         saved_pins.iter().map(|p| p.path.clone()).collect();
-
     let mut results = results;
     for r in &mut results {
         r.pinned = pin_paths.contains(&r.path);
     }
-
     results.sort_by(|a, b| a.score.cmp(&b.score).then_with(|| a.name.cmp(&b.name)));
-
     SearchResponse {
         results,
         pins: pins_to_results(&saved_pins),
@@ -56,7 +45,6 @@ pub async fn search_all(_app: tauri::AppHandle, query: String) -> SearchResponse
         icons_ready: icons::is_precache_done(),
     }
 }
-
 fn pins_to_results(pins: &[pins::Pin]) -> Vec<search::SearchResult> {
     pins.iter()
         .map(|p| search::SearchResult {
@@ -70,7 +58,6 @@ fn pins_to_results(pins: &[pins::Pin]) -> Vec<search::SearchResult> {
         })
         .collect()
 }
-
 #[tauri::command]
 pub async fn get_icons(paths: Vec<String>) -> HashMap<String, String> {
     let mut result = HashMap::new();

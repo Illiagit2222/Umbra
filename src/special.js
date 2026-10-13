@@ -1,6 +1,3 @@
-
-
-
 function showOpenCard(url, label) {
   specialSection.classList.remove("hidden");
   resultsSection.classList.add("hidden");
@@ -19,10 +16,8 @@ function showOpenCard(url, label) {
     hideWindow();
   });
 }
-
 function handleSpecialCommand(query) {
   const q = query.trim();
-
   const killMatch = q.match(/^kill\s+(.+)/i);
   if (killMatch) {
     const procName = killMatch[1].trim();
@@ -52,7 +47,6 @@ function handleSpecialCommand(query) {
     });
     return true;
   }
-
   const powerMatch = q.match(/^(shutdown|restart|sleep)$/i);
   if (powerMatch) {
     const cmd = powerMatch[1].toLowerCase();
@@ -82,9 +76,6 @@ function handleSpecialCommand(query) {
     });
     return true;
   }
-
-
-
   if (/^!help\s*$/i.test(q)) {
     const cmds = [
       { name: "!help", desc: "Show this help", fill: "" },
@@ -102,7 +93,6 @@ function handleSpecialCommand(query) {
     resultsSection.classList.remove("hidden");
     specialSection.classList.add("hidden");
     pinsSection.classList.add("hidden");
-
     resultsList.innerHTML = "";
     for (const c of cmds) {
       const el = document.createElement("div");
@@ -112,7 +102,6 @@ function handleSpecialCommand(query) {
         <div class="result-name" style="font-family:var(--font-main);font-weight:var(--weight-regular);font-size:13px">${escapeHtml(c.name)}</div>
         <div class="result-path" style="font-size:13px">${escapeHtml(c.desc)}</div>
       `;
-
       el.addEventListener("click", () => {
         if (!c.fill) return;
         searchInput.value = c.fill;
@@ -131,9 +120,6 @@ function handleSpecialCommand(query) {
     updateSelection();
     return true;
   }
-
-
-
   const quickMatch = q.match(/^!(\w+)\s+(.+)/);
   if (quickMatch) {
     const site = quickMatch[1].toLowerCase();
@@ -159,8 +145,5 @@ function handleSpecialCommand(query) {
     showOpenCard(`${url}${encodeURIComponent(query)}`, `open in ${site}: ${query}`);
     return true;
   }
-
-
-
   return false;
 }

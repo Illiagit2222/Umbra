@@ -1,15 +1,10 @@
-
-
 use tauri::Manager;
-
 pub fn create(app: &tauri::App) -> tauri::Result<()> {
     use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
     use tauri::menu::{MenuBuilder, MenuItemBuilder};
-
     let restart_item = MenuItemBuilder::new("Restart").id("restart").build(app)?;
     let quit_item = MenuItemBuilder::new("Quit").id("quit").build(app)?;
     let menu = MenuBuilder::new(app).items(&[&restart_item, &quit_item]).build()?;
-
     let _tray = TrayIconBuilder::new()
         .icon(app.default_window_icon().unwrap().clone())
         .menu(&menu)
@@ -37,6 +32,5 @@ pub fn create(app: &tauri::App) -> tauri::Result<()> {
             }
         })
         .build(app)?;
-
     Ok(())
 }

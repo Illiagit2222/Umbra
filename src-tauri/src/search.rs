@@ -1,18 +1,13 @@
-
-
 use crate::config;
 use crate::frecency;
 use crate::indexer::{with_entries, SearchEntry, KIND_APP, KIND_SHORTCUT};
 use rayon::prelude::*;
 use serde::Serialize;
 use std::sync::atomic::{AtomicU32, Ordering};
-
 pub static SEARCH_VERSION: AtomicU32 = AtomicU32::new(0);
-
 pub fn is_current(version: u32) -> bool {
     SEARCH_VERSION.load(Ordering::SeqCst) == version
 }
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Default, serde::Serialize)]
 pub struct ScoreKey {
     pub tier: u32,
@@ -21,7 +16,6 @@ pub struct ScoreKey {
     pub len: u32,
     pub path_len: u32,
 }
-
 #[derive(Debug, Clone, Serialize)]
 pub struct SearchResult {
     pub name: String,
@@ -34,7 +28,6 @@ pub struct SearchResult {
     #[serde(skip)]
     pub score: ScoreKey,
 }
-
 const EN_TO_RU: &[(char, char)] = &[
     ('q', '\u{0439}'), ('w', '\u{0446}'), ('e', '\u{0443}'), ('r', '\u{043A}'),
     ('t', '\u{0435}'), ('y', '\u{043D}'), ('u', '\u{0433}'), ('i', '\u{0448}'),
@@ -46,7 +39,6 @@ const EN_TO_RU: &[(char, char)] = &[
     ('b', '\u{0438}'), ('n', '\u{0442}'), ('m', '\u{044C}'),
     (',', '\u{0431}'), ('.', '\u{044E}'),
 ];
-
 const RU_TRANSLIT: &[(char, &str)] = &[
     ('\u{0430}', "a"), ('\u{0431}', "b"), ('\u{0432}', "v"), ('\u{0433}', "g"),
     ('\u{0434}', "d"), ('\u{0435}', "e"), ('\u{0451}', "yo"), ('\u{0436}', "zh"),
@@ -58,11 +50,9 @@ const RU_TRANSLIT: &[(char, &str)] = &[
     ('\u{044B}', "y"), ('\u{044C}', ""), ('\u{044D}', "e"), ('\u{044E}', "yu"),
     ('\u{044F}', "ya"),
 ];
-
 fn get_search_variants(q: &str) -> Vec<String> {
     let mut variants = vec![q.to_string()];
     let lower: String = q.chars().map(|c| c.to_lowercase().next().unwrap_or(c)).collect();
-
     let v1: String = lower
         .chars()
         .map(|c| EN_TO_RU.iter().find(|&&(en, _)| en == c).map(|&(_, ru)| ru).unwrap_or(c))
@@ -70,7 +60,6 @@ fn get_search_variants(q: &str) -> Vec<String> {
     if !variants.contains(&v1) {
         variants.push(v1);
     }
-
     let v2: String = lower
         .chars()
         .map(|c| EN_TO_RU.iter().find(|&&(_, ru)| ru == c).map(|&(en, _)| en).unwrap_or(c))
@@ -78,7 +67,6 @@ fn get_search_variants(q: &str) -> Vec<String> {
     if !variants.contains(&v2) {
         variants.push(v2);
     }
-
     let v3: String = lower
         .chars()
         .map(|c| match RU_TRANSLIT.iter().find(|&&(ru, _)| ru == c) {
@@ -89,7 +77,6 @@ fn get_search_variants(q: &str) -> Vec<String> {
     if !variants.contains(&v3) {
         variants.push(v3);
     }
-
     let mut ru_from_en: std::collections::HashMap<char, char> = std::collections::HashMap::new();
     for &(ru, tr) in RU_TRANSLIT {
         let mut it = tr.chars();
@@ -104,10 +91,8 @@ fn get_search_variants(q: &str) -> Vec<String> {
     if !variants.contains(&v4) {
         variants.push(v4);
     }
-
     variants
 }
-
 fn lev_dist(a: &str, b: &str, max: usize) -> Option<usize> {
     let a_chars: Vec<char> = a.chars().collect();
     let b_chars: Vec<char> = b.chars().collect();
@@ -133,9 +118,7 @@ fn lev_dist(a: &str, b: &str, max: usize) -> Option<usize> {
     let d = prev[m];
     if d <= max { Some(d) } else { None }
 }
-
 type VariantTable = (String, Vec<(char, i32)>);
-
 fn variant_char_table(v: &str) -> Vec<(char, i32)> {
     let mut table: Vec<(char, i32)> = Vec::new();
     for c in v.chars() {
@@ -146,7 +129,6 @@ fn variant_char_table(v: &str) -> Vec<(char, i32)> {
     }
     table
 }
-
 fn shared_chars(name: &str, table: &[(char, i32)]) -> i32 {
     let mut tmp: Vec<(char, i32)> = table.to_vec();
     let mut shared = 0i32;
@@ -160,19 +142,18 @@ fn shared_chars(name: &str, table: &[(char, i32)]) -> i32 {
     }
     shared
 }
-
 fn is_fuzzy_match(name: &str, variants: &[VariantTable], max_dist: usize) -> Option<usize> {
     let mut best: Option<usize> = None;
     let name_chars: Vec<char> = name.chars().collect();
     for (v, table) in variants {
         let wlen = v.chars().count();
         if wlen < 3 { continue; }
-        
+
         if let Some(d) = lev_dist(name, v, max_dist) {
             best = Some(best.map_or(d, |b| b.min(d)));
             if best == Some(1) { return best; }
         }
-        
+
         if name_chars.len() > wlen
             && shared_chars(name, table) >= wlen as i32 - max_dist as i32
         {
@@ -183,7 +164,7 @@ fn is_fuzzy_match(name: &str, variants: &[VariantTable], max_dist: usize) -> Opt
                     if best == Some(1) { return best; }
                 }
             }
-            
+
             if wlen > 1 {
                 for delta in [1i32, -1] {
                     let wl = (wlen as i32 + delta) as usize;
@@ -201,7 +182,6 @@ fn is_fuzzy_match(name: &str, variants: &[VariantTable], max_dist: usize) -> Opt
     }
     best
 }
-
 fn match_score(
     e: &SearchEntry,
     q: &str,
@@ -221,7 +201,6 @@ fn match_score(
     } else if variants.iter().any(|(v, _)| name.contains(v.as_str())) {
         4
     } else {
-
         let q_len = q.chars().count();
         let max_dist = if q_len <= 3 {
             0
@@ -230,11 +209,9 @@ fn match_score(
         } else {
             2
         };
-
         if max_dist == 0 {
             return None;
         }
-
         if std::time::Instant::now() > fuzzy_deadline {
             return None;
         }
@@ -244,7 +221,7 @@ fn match_score(
             return None;
         }
     };
-    
+
     let ext = std::path::Path::new(&e.path)
         .extension()
         .map(|s| s.to_string_lossy().to_lowercase())
@@ -257,25 +234,20 @@ fn match_score(
     } else {
         2 
     };
-
     let frec_score = frec.get(&e.path).copied().unwrap_or(0.0).clamp(0.0, 1000.0);
     let frec_inv = ((1000.0 - frec_score) * 10.0) as u32;
-    
+
     let len = (e.name_lower.chars().count() as u32).min(9999);
     let path_len = (e.path.chars().count() as u32).min(9999);
     Some(ScoreKey { tier, primary, frec_inv, len, path_len })
 }
-
 const MAX_RESULTS: usize = 30;
-
 const FUZZY_BUDGET_MS: u64 = 250;
-
 pub fn search_index(query: &str, version: u32) -> Vec<SearchResult> {
     let q = query.to_lowercase();
     if q.is_empty() || !is_current(version) {
         return Vec::new();
     }
-
     let variants: Vec<VariantTable> = get_search_variants(&q)
         .into_iter()
         .map(|v| {
@@ -283,12 +255,12 @@ pub fn search_index(query: &str, version: u32) -> Vec<SearchResult> {
             (v, table)
         })
         .collect();
-    
+
     let frec = frecency::scores_snapshot();
     let fuzzy_deadline = std::time::Instant::now() + std::time::Duration::from_millis(FUZZY_BUDGET_MS);
-    
+
     let disabled_kinds = config::get_disabled_kinds();
-    
+
     with_entries(|entries| {
         let mut picked: Vec<(ScoreKey, usize)> = entries
             .par_iter()
@@ -301,16 +273,12 @@ pub fn search_index(query: &str, version: u32) -> Vec<SearchResult> {
                 match_score(e, &q, &variants, &frec, fuzzy_deadline).map(|score| (score, i))
             })
             .collect();
-
         if !is_current(version) {
             return Vec::new();
         }
-
         picked.sort_unstable();
-
         let mut deduplicated = Vec::with_capacity(MAX_RESULTS);
         let mut seen_apps = std::collections::HashSet::new();
-
         for (score, i) in picked {
             if let Some(e) = entries.get(i) {
                 if e.kind == crate::indexer::KIND_APP || e.kind == crate::indexer::KIND_SHORTCUT {
@@ -318,27 +286,23 @@ pub fn search_index(query: &str, version: u32) -> Vec<SearchResult> {
                         continue;
                     }
                 }
-                
+
                 let mut r = crate::indexer::entry_to_result(e);
                 r.score = score;
                 deduplicated.push(r);
-
                 if deduplicated.len() >= MAX_RESULTS {
                     break;
                 }
             }
         }
-
         deduplicated
     })
     .unwrap_or_default()
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::indexer::{INDEX, KIND_APP, KIND_DOCUMENT, KIND_FILE, KIND_FOLDER, KIND_IMAGE};
-
     fn entry(name: &str, path: &str, kind: u8) -> SearchEntry {
         SearchEntry {
             name_lower: name.to_lowercase().into_boxed_str(),
@@ -346,7 +310,6 @@ mod tests {
             kind,
         }
     }
-
     #[test]
     fn search_finds_matches_and_is_fast() {
         SEARCH_VERSION.store(0, Ordering::SeqCst);
@@ -359,7 +322,7 @@ mod tests {
             entry("vacation photo", "C:\\pics\\vacation.jpg", KIND_IMAGE),
             entry("москва", "C:\\docs\\москва.txt", KIND_DOCUMENT),
         ];
-        
+
         for i in 0..300_000 {
             entries.push(entry(
                 &format!("отчёт по проекту номер {} — итоговая версия (2)", i),
@@ -368,34 +331,29 @@ mod tests {
             ));
         }
         let _ = INDEX.set(std::sync::RwLock::new(entries));
-
         SEARCH_VERSION.store(1, Ordering::SeqCst);
         let t = std::time::Instant::now();
         let r = search_index("chrome", 1);
         let el_chrome = t.elapsed();
         assert!(!r.is_empty(), "'chrome' returned no results");
-        
+
         assert!(r[0].name.contains("chrome"), "first hit must be a chrome match");
         assert!(r.iter().any(|x| x.name == "chrome"), "exact 'chrome' must be present");
-
         SEARCH_VERSION.store(2, Ordering::SeqCst);
         let t = std::time::Instant::now();
         let r2 = search_index("vjcrdf", 2); 
         let el_layout = t.elapsed();
         assert!(!r2.is_empty(), "layout variant 'vjcrdf' returned nothing");
-
         SEARCH_VERSION.store(3, Ordering::SeqCst);
         let t = std::time::Instant::now();
         let r3 = search_index("spotfy", 3);
         let el_fuzzy = t.elapsed();
         assert!(!r3.is_empty(), "typo 'spotfy' did not match 'spotify'");
-
         SEARCH_VERSION.store(4, Ordering::SeqCst);
         let t = std::time::Instant::now();
         let r4 = search_index("pohotoshop", 4);
         let el_fuzzy2 = t.elapsed();
         assert!(!r4.is_empty(), "typo 'pohotoshop' did not match 'photoshop'");
-
         println!(
             "300k entries — chrome: {:?}, layout: {:?}, fuzzy: {:?}, fuzzy2: {:?}",
             el_chrome, el_layout, el_fuzzy, el_fuzzy2
@@ -412,7 +370,6 @@ mod tests {
                 el
             );
         }
-
         SEARCH_VERSION.store(100, Ordering::SeqCst);
         let stale = search_index("chrome", 99);
         assert!(stale.is_empty(), "stale scan must abort immediately");

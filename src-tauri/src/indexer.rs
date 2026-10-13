@@ -1,14 +1,10 @@
-
-
 use crate::search::SearchResult;
 use std::path::{Path, PathBuf};
 use std::sync::{OnceLock, RwLock};
 use std::thread;
 use tauri::Emitter;
 use jwalk::WalkDir;
-
 pub(crate) static INDEX: OnceLock<RwLock<Vec<SearchEntry>>> = OnceLock::new();
-
 pub(crate) const KIND_APP: u8 = 0;
 pub(crate) const KIND_SHORTCUT: u8 = 1;
 pub(crate) const KIND_FOLDER: u8 = 2;
@@ -20,14 +16,12 @@ pub(crate) const KIND_ARCHIVE: u8 = 7;
 pub(crate) const KIND_CODE: u8 = 8;
 pub(crate) const KIND_FILE: u8 = 9;
 pub(crate) const KIND_SYSTEM: u8 = 10;
-
 #[derive(Clone)]
 pub(crate) struct SearchEntry {
     pub name_lower: Box<str>,
     pub path: String,
     pub kind: u8,
 }
-
 pub(crate) fn kind_str(kind: u8) -> &'static str {
     match kind {
         KIND_APP => "app",
@@ -43,7 +37,6 @@ pub(crate) fn kind_str(kind: u8) -> &'static str {
         _ => "file",
     }
 }
-
 pub(crate) fn derive_display_name(path: &str, kind: u8) -> String {
     let p = Path::new(path);
     let file_name = p.file_name().unwrap_or_default().to_string_lossy();
@@ -56,7 +49,6 @@ pub(crate) fn derive_display_name(path: &str, kind: u8) -> String {
         file_name.to_string()
     }
 }
-
 pub(crate) fn entry_to_result(e: &SearchEntry) -> SearchResult {
     let kind = kind_str(e.kind);
     SearchResult {
@@ -69,12 +61,10 @@ pub(crate) fn entry_to_result(e: &SearchEntry) -> SearchResult {
         score: crate::search::ScoreKey::default(),
     }
 }
-
 /// Read-only access to the live index for the query layer.
 pub(crate) fn with_entries<R>(f: impl FnOnce(&[SearchEntry]) -> R) -> Option<R> {
     INDEX.get().and_then(|rw| rw.read().ok()).map(|r| f(&r))
 }
-
 fn kind_from_file(file_name: &str, is_dir: bool) -> u8 {
     if is_dir {
         return KIND_FOLDER;
@@ -98,7 +88,6 @@ fn kind_from_file(file_name: &str, is_dir: bool) -> u8 {
         _ => KIND_FILE,
     }
 }
-
 /// Structured progress event for the frontend island.
 /// `pct` is a smooth 0..=100 estimate, `scanned` is the exact live counter
 /// of entries collected so far, `phase` is one of:
@@ -112,7 +101,6 @@ struct IndexProgress {
     drive: String,
     done: bool,
 }
-
 fn emit_progress(app: &tauri::AppHandle, run: u64, p: &IndexProgress) {
     // Stale runs (superseded by a newer reindex) stay silent.
     if INDEX_RUN.load(std::sync::atomic::Ordering::SeqCst) != run {
@@ -120,7 +108,6 @@ fn emit_progress(app: &tauri::AppHandle, run: u64, p: &IndexProgress) {
     }
     let _ = app.emit("index-progress", p);
 }
-
 /// Legacy fallback for old frontends: plain percent number.
 #[allow(dead_code)]
 fn emit_pct(app: &tauri::AppHandle, run: u64, pct: u8, scanned: usize) {
@@ -141,21 +128,16 @@ fn emit_pct(app: &tauri::AppHandle, run: u64, pct: u8, scanned: usize) {
         },
     );
 }
-
 static INDEX_RUN: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
-
 pub fn init_index_with_progress(app: tauri::AppHandle) {
     // OnceLock::set fails on the 2nd (reindex) call — ensure instead.
     INDEX.get_or_init(|| RwLock::new(Vec::with_capacity(100_000)));
-
     // Every new run cancels the previous one: the old thread sees a
     // mismatched run id at the next checkpoint and exits quietly.
     let run = INDEX_RUN.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
-
     thread::spawn(move || {
         let mut entries = Vec::with_capacity(100_000);
         let cancelled = || INDEX_RUN.load(std::sync::atomic::Ordering::SeqCst) != run;
-
         emit_progress(
             &app,
             run,
@@ -168,7 +150,6 @@ pub fn init_index_with_progress(app: tauri::AppHandle) {
                 done: false,
             },
         );
-
         index_start_menu(&mut entries);
         if cancelled() {
             return;
@@ -185,7 +166,6 @@ pub fn init_index_with_progress(app: tauri::AppHandle) {
                 done: false,
             },
         );
-
         index_registry_apps(&mut entries);
         index_system_tools(&mut entries, &system_tool_dirs());
         let skip_dirs: std::collections::HashSet<String> =
@@ -200,7 +180,6 @@ pub fn init_index_with_progress(app: tauri::AppHandle) {
             return;
         }
         let post_apps = entries.len();
-
         emit_progress(
             &app,
             run,
@@ -213,18 +192,15 @@ pub fn init_index_with_progress(app: tauri::AppHandle) {
                 done: false,
             },
         );
-
         index_drives_with_progress(&mut entries, &app, run, post_apps);
         if cancelled() {
             return;
         }
-
         // Dedup by path, keeping the first occurrence: Start Menu / registry
         // entries come before the drive walk, so their display names win over
         // the raw file names for the same exe.
         let mut seen_paths: std::collections::HashSet<String> = std::collections::HashSet::new();
         entries.retain(|e| seen_paths.insert(e.path.clone()));
-
         if let Some(rw) = INDEX.get() {
             if let Ok(mut w) = rw.write() {
                 *w = entries;
@@ -234,7 +210,6 @@ pub fn init_index_with_progress(app: tauri::AppHandle) {
             return;
         }
         let total = with_entries(|r| r.len()).unwrap_or(0);
-
         emit_progress(
             &app,
             run,
@@ -247,12 +222,10 @@ pub fn init_index_with_progress(app: tauri::AppHandle) {
                 done: false,
             },
         );
-
         // Icons will be lazy-loaded to prevent massive memory footprint
         if cancelled() {
             return;
         }
-
         emit_progress(
             &app,
             run,
@@ -265,7 +238,6 @@ pub fn init_index_with_progress(app: tauri::AppHandle) {
                 done: false,
             },
         );
-
         emit_progress(
             &app,
             run,
@@ -280,23 +252,18 @@ pub fn init_index_with_progress(app: tauri::AppHandle) {
         );
     });
 }
-
 // Re-scan the fast sources (Start Menu + registry apps) and merge them into
 // the live index, so newly installed/removed apps are found without an app
 // restart. Full drive re-walk is intentionally NOT done here (too slow);
 // it still happens once at startup. Throttled to once per 5 minutes.
 static LAST_FAST_REFRESH: OnceLock<std::sync::Mutex<Option<std::time::Instant>>> = OnceLock::new();
-
 const FAST_REFRESH_INTERVAL: std::time::Duration = std::time::Duration::from_secs(300);
-
 pub fn refresh_fast_index_async() {
     std::thread::spawn(refresh_fast_index);
 }
-
 fn missing_paths(paths: Vec<String>) -> std::collections::HashSet<String> {
     paths.into_iter().filter(|p| !Path::new(p).exists()).collect()
 }
-
 pub fn refresh_fast_index() {
     let cell = LAST_FAST_REFRESH.get_or_init(|| std::sync::Mutex::new(None));
     {
@@ -308,17 +275,14 @@ pub fn refresh_fast_index() {
         }
         *guard = Some(std::time::Instant::now());
     }
-
     let mut fresh: Vec<SearchEntry> = Vec::new();
     index_start_menu(&mut fresh);
     index_registry_apps(&mut fresh);
     if fresh.is_empty() {
         return;
     }
-
     let fresh_paths: std::collections::HashSet<String> =
         fresh.iter().map(|e| e.path.clone()).collect();
-
     // drop old entries superseded by the fresh scan, plus app/shortcut
     // entries whose target no longer exists on disk (uninstalled) —
     // a fresh scan alone can't see removals. The disk checks run before
@@ -332,7 +296,6 @@ pub fn refresh_fast_index() {
     })
     .unwrap_or_default();
     let gone = missing_paths(app_paths);
-
     if let Some(rw) = INDEX.get() {
         if let Ok(mut w) = rw.write() {
             w.retain(|e| !fresh_paths.contains(&e.path) && !gone.contains(&e.path));
@@ -340,7 +303,6 @@ pub fn refresh_fast_index() {
         }
     }
 }
-
 fn index_start_menu(entries: &mut Vec<SearchEntry>) {
     let mut paths = Vec::new();
     if let Some(app_data) = dirs::data_dir() {
@@ -358,7 +320,6 @@ fn index_start_menu(entries: &mut Vec<SearchEntry>) {
             .unwrap_or_else(|| PathBuf::from("C:\\ProgramData"))
             .join("Microsoft\\Windows\\Start Menu\\Programs"),
     );
-
     for base in &paths {
         if !base.exists() {
             continue;
@@ -373,16 +334,13 @@ fn index_start_menu(entries: &mut Vec<SearchEntry>) {
                 .extension()
                 .map(|e| e.to_string_lossy().to_lowercase())
                 .unwrap_or_default();
-
             if ext != "lnk" && ext != "url" {
                 continue;
             }
-
             let display_name = file_name
                 .rsplit_once('.')
                 .map(|(n, _)| n.to_string())
                 .unwrap_or(file_name);
-
             let path_str = entry.path().to_string_lossy().to_string();
             entries.push(SearchEntry {
                 name_lower: display_name.to_lowercase().into_boxed_str(),
@@ -392,7 +350,6 @@ fn index_start_menu(entries: &mut Vec<SearchEntry>) {
         }
     }
 }
-
 fn system_tool_dirs() -> Vec<PathBuf> {
     let root = std::env::var_os("SystemRoot")
         .map(PathBuf::from)
@@ -407,9 +364,7 @@ fn system_tool_dirs() -> Vec<PathBuf> {
     }
     dirs
 }
-
 const APPDATA_EXE_DEPTH: usize = 4;
-
 fn program_dirs() -> Vec<(PathBuf, Option<usize>)> {
     let mut dirs: Vec<(PathBuf, Option<usize>)> =
         ["ProgramFiles", "ProgramFiles(x86)", "ProgramW6432"]
@@ -428,7 +383,6 @@ fn program_dirs() -> Vec<(PathBuf, Option<usize>)> {
     dirs.retain(|(d, _)| seen.insert(d.to_string_lossy().to_lowercase()));
     dirs
 }
-
 fn index_program_exes(
     entries: &mut Vec<SearchEntry>,
     dirs: &[(PathBuf, Option<usize>)],
@@ -464,7 +418,6 @@ fn index_program_exes(
         }
     }
 }
-
 fn index_system_tools(entries: &mut Vec<SearchEntry>, dirs: &[PathBuf]) {
     for dir in dirs {
         let Ok(rd) = std::fs::read_dir(dir) else {
@@ -489,7 +442,6 @@ fn index_system_tools(entries: &mut Vec<SearchEntry>, dirs: &[PathBuf]) {
         }
     }
 }
-
 fn clean_registry_path(val: &str) -> Option<String> {
     let trimmed = val.trim();
     if trimmed.is_empty() {
@@ -516,22 +468,18 @@ fn clean_registry_path(val: &str) -> Option<String> {
             }
         }
     }
-
     if let Some(comma_idx) = path.rfind(',') {
         let before = &path[..comma_idx];
         if Path::new(before).exists() {
             return Some(before.to_string());
         }
     }
-
     let p = Path::new(&path);
     if p.exists() {
         return Some(path);
     }
-
     None
 }
-
 fn is_inside_system_root(dir: &Path) -> bool {
     let Some(root) = std::env::var_os("SystemRoot") else {
         return false;
@@ -540,15 +488,12 @@ fn is_inside_system_root(dir: &Path) -> bool {
     let dir = dir.to_string_lossy().to_lowercase();
     dir == root || dir.starts_with(&format!("{root}\\"))
 }
-
 fn find_exe_in_dir(dir: &str, app_name: &str) -> Option<String> {
     let p = Path::new(dir);
     if !p.is_dir() || is_inside_system_root(p) {
         return None;
     }
-
     let app_name_lower = app_name.to_lowercase();
-
     if let Ok(rd) = std::fs::read_dir(p) {
         let mut exes = Vec::new();
         for entry in rd.filter_map(|e| e.ok()) {
@@ -556,7 +501,6 @@ fn find_exe_in_dir(dir: &str, app_name: &str) -> Option<String> {
             if path.is_file() && path.extension().map_or(false, |ext| ext == "exe") {
                 let file_name = path.file_name().unwrap().to_string_lossy().to_string();
                 let file_name_lower = file_name.to_lowercase();
-
                 if file_name_lower.contains(&app_name_lower)
                     || app_name_lower.contains(&file_name_lower.replace(".exe", ""))
                 {
@@ -569,10 +513,8 @@ fn find_exe_in_dir(dir: &str, app_name: &str) -> Option<String> {
             return Some(exes[0].clone());
         }
     }
-
     None
 }
-
 #[derive(Default)]
 struct UninstallEntry {
     name: Option<String>,
@@ -580,7 +522,6 @@ struct UninstallEntry {
     location: Option<String>,
     uninstall: Option<String>,
 }
-
 fn expand_env_vars(value: &str) -> String {
     let mut out = String::with_capacity(value.len());
     let mut rest = value;
@@ -609,24 +550,19 @@ fn expand_env_vars(value: &str) -> String {
     out.push_str(rest);
     out
 }
-
 #[cfg(target_os = "windows")]
 mod registry {
     use windows_sys::Win32::Foundation::ERROR_MORE_DATA;
     use windows_sys::Win32::System::Registry::*;
-
     fn wide(s: &str) -> Vec<u16> {
         s.encode_utf16().chain(std::iter::once(0)).collect()
     }
-
     pub struct Key(HKEY);
-
     impl Drop for Key {
         fn drop(&mut self) {
             unsafe { RegCloseKey(self.0) };
         }
     }
-
     impl Key {
         pub fn open(parent: HKEY, path: &str) -> Option<Key> {
             let mut hkey: HKEY = std::ptr::null_mut();
@@ -636,11 +572,9 @@ mod registry {
             };
             (res == 0 && !hkey.is_null()).then_some(Key(hkey))
         }
-
         pub fn child(&self, name: &str) -> Option<Key> {
             Key::open(self.0, name)
         }
-
         pub fn subkey_names(&self) -> Vec<String> {
             let mut names = Vec::new();
             let mut index = 0;
@@ -668,7 +602,6 @@ mod registry {
             }
             names
         }
-
         pub fn string(&self, name: &str) -> Option<String> {
             let name = wide(name);
             let mut kind: REG_VALUE_TYPE = 0;
@@ -705,7 +638,6 @@ mod registry {
             (!value.is_empty()).then_some(value)
         }
     }
-
     pub fn uninstall_entries() -> Vec<super::UninstallEntry> {
         const UNINSTALL: &str = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall";
         const UNINSTALL_WOW: &str = "SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall";
@@ -734,25 +666,20 @@ mod registry {
         out
     }
 }
-
 #[cfg(target_os = "windows")]
 fn uninstall_entries() -> Vec<UninstallEntry> {
     registry::uninstall_entries()
 }
-
 #[cfg(not(target_os = "windows"))]
 fn uninstall_entries() -> Vec<UninstallEntry> {
     Vec::new()
 }
-
 fn resolve_uninstall_entry(app: UninstallEntry) -> Option<(String, String)> {
     let app_name = app.name?;
     if app_name.len() < 2 {
         return None;
     }
-
     let mut resolved_path = app.icon.as_deref().and_then(clean_registry_path);
-
     if resolved_path.is_none() {
         if let Some(loc_path) = &app.location {
             let cleaned = loc_path.trim().replace('"', "");
@@ -761,7 +688,6 @@ fn resolve_uninstall_entry(app: UninstallEntry) -> Option<(String, String)> {
             }
         }
     }
-
     if resolved_path.is_none() {
         if let Some(cleaned) = app.uninstall.as_deref().and_then(clean_registry_path) {
             if let Some(parent) = Path::new(&cleaned).parent() {
@@ -771,11 +697,9 @@ fn resolve_uninstall_entry(app: UninstallEntry) -> Option<(String, String)> {
             }
         }
     }
-
     let path = resolved_path?;
     Path::new(&path).is_file().then_some((app_name, path))
 }
-
 fn index_registry_apps(entries: &mut Vec<SearchEntry>) {
     let mut seen = std::collections::HashSet::new();
     let mut seen_paths = std::collections::HashSet::new();
@@ -800,20 +724,15 @@ fn index_registry_apps(entries: &mut Vec<SearchEntry>) {
         });
     }
 }
-
 const SCAN_FROM: f64 = 5.0;
 const SCAN_TO: f64 = 92.0;
-
 const SCAN_SMOOTH: f64 = 40_000.0;
-
 const EMIT_EVERY_MS: u128 = 150;
 const EMIT_EVERY_FILES: usize = 1500;
-
 fn is_skipped_name(name: &str, skip_dirs: &std::collections::HashSet<String>) -> bool {
     let name = name.to_lowercase();
     name.starts_with('.') || skip_dirs.contains(name.as_str())
 }
-
 fn pruned_walk(root: &Path, skip_dirs: std::collections::HashSet<String>) -> WalkDir {
     WalkDir::new(root)
         .follow_links(false)
@@ -828,7 +747,6 @@ fn pruned_walk(root: &Path, skip_dirs: std::collections::HashSet<String>) -> Wal
             });
         })
 }
-
 fn index_drive(
     drive: &str,
     skip_dirs: &std::collections::HashSet<String>,
@@ -847,9 +765,8 @@ fn index_drive(
     let mut last_emit = std::time::Instant::now()
         .checked_sub(std::time::Duration::from_millis(1000))
         .unwrap_or_else(std::time::Instant::now);
-
     for entry in pruned_walk(root, skip_dirs.clone()).into_iter().filter_map(|e| e.ok()) {
-        
+
         if in_drive % 2048 == 0 && INDEX_RUN.load(std::sync::atomic::Ordering::SeqCst) != run {
             return;
         }
@@ -864,7 +781,6 @@ fn index_drive(
             kind,
         });
         in_drive += 1;
-
         if in_drive % EMIT_EVERY_FILES == 0 && last_emit.elapsed().as_millis() >= EMIT_EVERY_MS {
             last_emit = std::time::Instant::now();
             let frac = (in_drive as f64) / (in_drive as f64 + SCAN_SMOOTH);
@@ -883,7 +799,6 @@ fn index_drive(
             );
         }
     }
-
     emit_progress(
         app,
         run,
@@ -897,7 +812,6 @@ fn index_drive(
         },
     );
 }
-
 fn index_drives_with_progress(
     entries: &mut Vec<SearchEntry>,
     app: &tauri::AppHandle,
@@ -909,14 +823,12 @@ fn index_drives_with_progress(
     drives.retain(|d| {
         !disabled_drives.iter().any(|dd| d.to_uppercase() == dd.to_uppercase())
     });
-
     if drives.is_empty() {
         return;
     }
     let config_excludes = crate::config::get_index_excludes();
     let skip_dirs: std::collections::HashSet<String> = config_excludes.into_iter().collect();
     let n = drives.len() as f64;
-
     for (i, drive) in drives.iter().enumerate() {
         if INDEX_RUN.load(std::sync::atomic::Ordering::SeqCst) != run {
             return;
@@ -924,7 +836,7 @@ fn index_drives_with_progress(
         let span_from = SCAN_FROM + (SCAN_TO - SCAN_FROM) * (i as f64 / n);
         let span_to = SCAN_FROM + (SCAN_TO - SCAN_FROM) * ((i + 1) as f64 / n);
         let before = entries.len();
-        
+
         emit_progress(
             app,
             run,
@@ -940,19 +852,16 @@ fn index_drives_with_progress(
         index_drive(drive, &skip_dirs, entries, app, run, base, span_from, span_to);
     }
 }
-
 #[cfg(target_os = "windows")]
 pub fn get_available_drives() -> Vec<String> {
     use std::ffi::{OsStr, OsString};
     use std::os::windows::ffi::{OsStrExt, OsStringExt};
     use windows_sys::Win32::Storage::FileSystem::{GetDriveTypeW, GetLogicalDriveStringsW};
-
     let mut buffer = [0u16; 256];
     let len = unsafe { GetLogicalDriveStringsW(buffer.len() as u32, buffer.as_mut_ptr()) };
     if len == 0 || len as usize > buffer.len() {
         return vec!["C:\\".to_string(), "D:\\".to_string()];
     }
-
     let mut drives = Vec::new();
     let mut i = 0;
     while i < len as usize {
@@ -968,7 +877,6 @@ pub fn get_available_drives() -> Vec<String> {
         }
         i = j + 1;
     }
-
     drives
         .into_iter()
         .filter(|d| {
@@ -981,34 +889,28 @@ pub fn get_available_drives() -> Vec<String> {
         })
         .collect()
 }
-
 #[cfg(not(target_os = "windows"))]
 pub fn get_available_drives() -> Vec<String> {
     vec!["/".to_string()]
 }
-
 pub fn get_indexed_count() -> usize {
     with_entries(|r| r.len()).unwrap_or(0)
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::collections::HashSet;
     use std::fs;
-
     fn temp_dir(name: &str) -> PathBuf {
         let dir = std::env::temp_dir().join(format!("umbra-indexer-{}-{}", name, std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         dir
     }
-
     fn touch(path: PathBuf) {
         fs::create_dir_all(path.parent().unwrap()).unwrap();
         fs::write(path, b"").unwrap();
     }
-
     #[test]
     fn pruned_walk_skips_whole_excluded_subtrees() {
         let root = temp_dir("walk");
@@ -1021,35 +923,29 @@ mod tests {
             .iter()
             .map(|s| s.to_string())
             .collect();
-
         let found: HashSet<String> = pruned_walk(&root, skip)
             .into_iter()
             .filter_map(|e| e.ok())
             .filter(|e| e.depth() > 0)
             .map(|e| e.path().strip_prefix(&root).unwrap().to_string_lossy().replace('\\', "/"))
             .collect();
-
         let expected: HashSet<String> = ["keep", "keep/a.txt"].iter().map(|s| s.to_string()).collect();
         assert_eq!(found, expected);
         fs::remove_dir_all(&root).unwrap();
     }
-
     #[test]
     fn system_tools_are_indexed_without_recursing() {
         let root = temp_dir("tools");
         touch(root.join("notepad.exe"));
         touch(root.join("readme.txt"));
         touch(root.join("drivers").join("hidden.exe"));
-
         let mut entries = Vec::new();
         index_system_tools(&mut entries, &[root.clone(), root.join("missing")]);
-
         let names: Vec<&str> = entries.iter().map(|e| e.name_lower.as_ref()).collect();
         assert_eq!(names, vec!["notepad"]);
         assert!(entries.iter().all(|e| e.kind == KIND_APP));
         fs::remove_dir_all(&root).unwrap();
     }
-
     #[test]
     fn program_folders_contribute_only_exes() {
         let root = temp_dir("programs");
@@ -1058,44 +954,37 @@ mod tests {
         touch(root.join("Vendor App").join("bin").join("app.EXE"));
         touch(root.join("Vendor App").join("node_modules").join("x").join("helper.exe"));
         let skip: HashSet<String> = HashSet::from(["node_modules".to_string()]);
-
         let mut entries = Vec::new();
         index_program_exes(&mut entries, &[(root.clone(), None), (root.join("missing"), None)], &skip, &[]);
         let mut names: Vec<&str> = entries.iter().map(|e| e.name_lower.as_ref()).collect();
         names.sort();
         assert_eq!(names, vec!["app", "tool"]);
-
         let mut shallow = Vec::new();
         index_program_exes(&mut shallow, &[(root.clone(), Some(2))], &skip, &[]);
         let names: Vec<&str> = shallow.iter().map(|e| e.name_lower.as_ref()).collect();
         assert_eq!(names, vec!["tool"], "max depth must stop before Vendor App/bin/app.EXE");
-
         let excluded_root = root.join("Program Files");
         touch(excluded_root.join("Vendor").join("vendor-app.exe"));
         let skip_root: HashSet<String> = HashSet::from(["program files".to_string()]);
         let mut from_root = Vec::new();
         index_program_exes(&mut from_root, &[(excluded_root, None)], &skip_root, &[]);
         assert_eq!(from_root.len(), 1, "a root named like an exclude must still be walked");
-
         let mut none = Vec::new();
         let drive = root.to_string_lossy()[..3].to_string();
         index_program_exes(&mut none, &[(root.clone(), None)], &skip, &[drive]);
         assert!(none.is_empty());
         fs::remove_dir_all(&root).unwrap();
     }
-
     #[test]
     fn missing_paths_reports_only_deleted_targets() {
         let root = temp_dir("missing");
         touch(root.join("alive.exe"));
         let alive = root.join("alive.exe").to_string_lossy().to_string();
         let gone = root.join("gone.lnk").to_string_lossy().to_string();
-
         let missing = missing_paths(vec![alive, gone.clone()]);
         assert_eq!(missing, HashSet::from([gone]));
         fs::remove_dir_all(&root).unwrap();
     }
-
     #[test]
     fn expands_environment_variables_like_reg_expand_sz() {
         std::env::set_var("UMBRA_TEST_DIR", "C:\\Tools");
@@ -1105,14 +994,12 @@ mod tests {
         assert_eq!(expand_env_vars("%%"), "%%");
         assert_eq!(expand_env_vars("plain"), "plain");
     }
-
     #[cfg(target_os = "windows")]
     #[test]
     fn registry_uninstall_entries_are_readable() {
         let entries = uninstall_entries();
         assert!(entries.iter().any(|e| e.name.is_some()));
     }
-
     #[cfg(target_os = "windows")]
     #[test]
     fn app_exe_is_never_guessed_inside_windows_folder() {
@@ -1121,7 +1008,6 @@ mod tests {
         assert_eq!(find_exe_in_dir(&system32.to_string_lossy(), "Application Compatibility Database"), None);
         assert!(!is_inside_system_root(Path::new("C:\\Program Files\\WinRAR")));
     }
-
     #[cfg(target_os = "windows")]
     #[test]
     fn common_windows_tools_are_found() {
