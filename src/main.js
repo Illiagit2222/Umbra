@@ -1351,6 +1351,7 @@ function getExtGroup(path) {
   return "file";
 }
 function getVisualKind(item) {
+  if (item.kind === "folder") return "folder";
   return needsRealIcon(item) ? (item.kind || "file") : getExtGroup(item.path);
 }
 function createResultItem(item, index, query) {
