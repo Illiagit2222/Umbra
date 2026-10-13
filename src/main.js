@@ -728,6 +728,8 @@ const borderToggle = document.getElementById("setting-border");
 const borderWVal = document.getElementById("setting-borderw-val");
 const borderPosSeg = document.getElementById("border-pos-seg");
 const densitySeg = document.getElementById("density-seg");
+const tallRow = document.getElementById("setting-tall-row");
+const tallToggle = document.getElementById("setting-tall");
 const glowToggle = document.getElementById("setting-glow");
 const glowVal = document.getElementById("setting-glow-val");
 const THEME_PRESETS = [
@@ -805,6 +807,7 @@ function applyTheme() {
     b.classList.toggle("active", b.dataset.pos === theme.borderPos));
   densitySeg.querySelectorAll(".seg-btn").forEach((b) =>
     b.classList.toggle("active", b.dataset.density === theme.density));
+  tallToggle.classList.toggle("on", !!theme.tallResults);
   accentCustom.style.background = theme.accent;
   bgCustom.style.background = theme.cardBg;
   renderAccentSwatches();
@@ -1148,6 +1151,11 @@ densitySeg.addEventListener("click", (e) => {
   if (!btn) return;
   e.stopPropagation();
   theme = { ...theme, density: btn.dataset.density };
+  saveTheme();
+});
+// The window itself is resized on the Rust side (set_theme refits it).
+tallRow.addEventListener("click", () => {
+  theme = { ...theme, tallResults: !theme.tallResults };
   saveTheme();
 });
 async function loadTheme() {

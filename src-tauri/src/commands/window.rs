@@ -6,6 +6,45 @@ pub fn hide_window(app: tauri::AppHandle) {
     }
 }
 use crate::config;
+/// The window's normal size in logical px: what the resize grip last set, or
+/// the tauri.conf default. Placement always aligns this size, so a window
+/// stretched on the last summon never shifts where the next one lands.
+static BASE_SIZE: std::sync::Mutex<(f64, f64)> = std::sync::Mutex::new((660.0, 560.0));
+fn base_size_physical(window: &tauri::WebviewWindow) -> (i32, i32) {
+    let (w, h) = *BASE_SIZE.lock().unwrap();
+    let scale = window.scale_factor().unwrap_or(1.0);
+    ((w * scale).round() as i32, (h * scale).round() as i32)
+}
+/// Height for a window whose top edge is at `top`: the normal height, or with
+/// the experimental "results to screen bottom" option, down to the bottom of
+/// the work area (never shorter than normal).
+fn fitted_height(base_h: i32, top: i32, work_bottom: i32, stretch: bool) -> i32 {
+    if stretch {
+        base_h.max(work_bottom - top)
+    } else {
+        base_h
+    }
+}
+fn work_bottom(mon: &tauri::Monitor) -> i32 {
+    let area = mon.work_area();
+    area.position.y + area.size.height as i32
+}
+fn fit_height(window: &tauri::WebviewWindow, top: i32, work_bottom: i32) {
+    let (w, h) = base_size_physical(window);
+    let h = fitted_height(h, top, work_bottom, config::get_theme().tall_results);
+    let _ = window.set_size(tauri::PhysicalSize::new(w as u32, h as u32));
+}
+/// Re-applies the size for wherever the window sits now: a pinned position,
+/// after a manual resize, or when the setting is toggled.
+pub fn refit_window(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let top = window.outer_position().map(|p| p.y);
+        let mon = window.current_monitor().ok().flatten();
+        if let (Ok(top), Some(mon)) = (top, mon) {
+            fit_height(&window, top, work_bottom(&mon));
+        }
+    }
+}
 fn animate_window_to(window: tauri::WebviewWindow, target_x: i32, target_y: i32) {
     std::thread::spawn(move || {
         let start = window.outer_position().ok();
@@ -84,7 +123,9 @@ fn animate_window_to(window: tauri::WebviewWindow, target_x: i32, target_y: i32)
         }
     });
 }
-fn placement_target(window: &tauri::WebviewWindow) -> Option<(i32, i32)> {
+/// Where the window's top-left corner goes, plus the bottom edge of that
+/// monitor's work area.
+fn placement_target(window: &tauri::WebviewWindow) -> Option<(i32, i32, i32)> {
     let (align, mon_idx) = config::get_placement();
     let monitors = window.available_monitors().ok()?;
     let mon = if mon_idx >= 0 {
@@ -94,10 +135,9 @@ fn placement_target(window: &tauri::WebviewWindow) -> Option<(i32, i32)> {
     }
     .or_else(|| window.current_monitor().ok().flatten())
     .or_else(|| window.primary_monitor().ok().flatten())?;
-    let size = window.inner_size().ok()?;
     let (mx, my) = (mon.position().x, mon.position().y);
     let (mw, mh) = (mon.size().width as i32, mon.size().height as i32);
-    let (w, h) = (size.width as i32, size.height as i32);
+    let (w, h) = base_size_physical(window);
     let (va, ha) = align.split_at(1); 
     let tx = match ha {
         "l" => mx,
@@ -109,12 +149,15 @@ fn placement_target(window: &tauri::WebviewWindow) -> Option<(i32, i32)> {
         "b" => my + mh - h,
         _ => my + (mh - h) / 2,
     };
-    Some((tx, ty))
+    Some((tx, ty, work_bottom(&mon)))
 }
 pub fn place_window(app: &tauri::AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         match placement_target(&window) {
-            Some((tx, ty)) => animate_window_to(window, tx, ty),
+            Some((tx, ty, bottom)) => {
+                fit_height(&window, ty, bottom);
+                animate_window_to(window, tx, ty)
+            }
             None => animate_recenter(app),
         }
     }
@@ -122,18 +165,16 @@ pub fn place_window(app: &tauri::AppHandle) {
 pub fn animate_recenter(app: &tauri::AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         let target = window.current_monitor().ok().flatten().map(|mon| {
-            let size = window.inner_size().ok();
             let (mon_pos, mon_size) = (mon.position(), mon.size());
-            let (w, h) = match size {
-                Some(s) => (s.width as i32, s.height as i32),
-                None => (0, 0),
-            };
+            let (w, h) = base_size_physical(&window);
             (
                 mon_pos.x + ((mon_size.width as i32) - w) / 2,
                 mon_pos.y + ((mon_size.height as i32) - h) / 2,
+                work_bottom(&mon),
             )
         });
-        if let Some((tx, ty)) = target {
+        if let Some((tx, ty, bottom)) = target {
+            fit_height(&window, ty, bottom);
             animate_window_to(window, tx, ty);
         }
     }
@@ -144,11 +185,10 @@ pub fn recenter_window(app: tauri::AppHandle) {
 }
 #[tauri::command]
 pub fn resize_main_window(app: tauri::AppHandle, width: f64, height: f64) {
-    if let Some(w) = app.get_webview_window("main") {
-        let width = width.clamp(480.0, 920.0);
-        let height = height.clamp(400.0, 900.0);
-        let _ = w.set_size(tauri::LogicalSize::new(width, height));
-    }
+    let width = width.clamp(480.0, 920.0);
+    let height = height.clamp(400.0, 900.0);
+    *BASE_SIZE.lock().unwrap() = (width, height);
+    refit_window(&app);
 }
 #[tauri::command]
 pub fn set_window_pin(app: tauri::AppHandle, pinned: bool) -> bool {
@@ -167,4 +207,21 @@ pub fn set_window_pin(app: tauri::AppHandle, pinned: bool) -> bool {
 #[tauri::command]
 pub fn get_window_pin() -> bool {
     crate::config::is_pinned()
+}
+#[cfg(test)]
+mod tests {
+    use super::fitted_height;
+    #[test]
+    fn keeps_the_normal_height_when_not_stretching() {
+        assert_eq!(fitted_height(560, 200, 1032, false), 560);
+    }
+    #[test]
+    fn stretches_down_to_the_work_area_bottom() {
+        assert_eq!(fitted_height(560, 200, 1032, true), 832);
+    }
+    #[test]
+    fn never_shrinks_below_the_normal_height() {
+        // Bottom-aligned window: its top is already within 560px of the edge.
+        assert_eq!(fitted_height(560, 600, 1032, true), 560);
+    }
 }

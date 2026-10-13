@@ -47,6 +47,8 @@ pub fn show_window(window: &tauri::WebviewWindow) {
     indexer::refresh_fast_index_async();
     if !config::is_pinned() {
         commands::place_window(window.app_handle());
+    } else {
+        commands::refit_window(window.app_handle());
     }
 }
 fn main() {
