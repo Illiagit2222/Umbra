@@ -39,6 +39,9 @@ function handleSpecialCommand(query) {
   const killMatch = q.match(/^kill\s+(.+)/i);
   if (killMatch) {
     const procName = killMatch[1].trim();
+    // Confirm by clicking; without this Enter launched the previous search's top result.
+    selectableItems = [];
+    selectedIndex = -1;
     specialSection.classList.remove("hidden");
     resultsSection.classList.add("hidden");
     pinsSection.classList.add("hidden");
@@ -69,6 +72,9 @@ function handleSpecialCommand(query) {
   if (powerMatch) {
     const cmd = powerMatch[1].toLowerCase();
     const labels = { shutdown: "shutting down", restart: "restarting", sleep: "sleeping" };
+    // Same as kill: never let Enter fall through to a stale result on a power prompt.
+    selectableItems = [];
+    selectedIndex = -1;
     specialSection.classList.remove("hidden");
     resultsSection.classList.add("hidden");
     pinsSection.classList.add("hidden");
