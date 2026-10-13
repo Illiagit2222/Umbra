@@ -1198,12 +1198,14 @@ html[data-border-pos="outer"] :is(#search-box, .settings-card, #content-menu, #c
   flex-shrink: 0;
   animation: result-enter 0.22s cubic-bezier(0.2, 1, 0.3, 1) both;
 }
+/* Same box as .result-item (the card supplies the border), so command cards line
+   up with the result rows in every density mode. */
 .special-action {
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: var(--card-h);
-  padding: 6px 16px 6px 8px;
+  height: calc(var(--card-h) - 2 * var(--card-border-w));
+  padding: 0 16px 0 8px;
   cursor: pointer;
   transition: background 0.1s;
   color: var(--text);
@@ -1219,7 +1221,7 @@ html[data-border-pos="outer"] :is(#search-box, .settings-card, #content-menu, #c
   color: var(--icon);
   width: 20px;
   height: 20px;
-  margin: 8px;
+  margin: 0 calc((var(--result-icon) - 20px) / 2);
 }
 .special-action span {
   min-width: 0;
