@@ -779,6 +779,123 @@ html[data-border-pos="outer"] :is(#search-box, .settings-card, #content-menu, #c
   text-overflow: ellipsis;
   font-variant-numeric: tabular-nums;
 }
+/* Colour widget ("#c83939", color.js), from the App-Paper-picker Figma frame. */
+.color-card {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  padding: 10px;
+}
+.cc-preview {
+  display: flex;
+  flex-shrink: 0;
+  width: 168px;
+  height: 165px;
+}
+.cc-shades {
+  display: flex;
+  flex-direction: column;
+  width: 23px;
+}
+.cc-shades span {
+  flex: 1;
+}
+.cc-shades span:first-child {
+  border-top-left-radius: 8px;
+}
+.cc-shades span:last-child {
+  border-bottom-left-radius: 8px;
+}
+.cc-swatch {
+  flex: 1;
+  border-radius: 0 8px 8px 0;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+}
+.cc-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.cc-field[data-copy] {
+  cursor: pointer;
+}
+.cc-label {
+  font-size: 16px;
+  font-weight: var(--weight-medium);
+  color: var(--text-dim);
+}
+.cc-value {
+  font-family: 'Google Sans Flex', var(--font-main);
+  font-size: 24px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cc-history {
+  display: flex;
+  gap: 2px;
+  margin-top: 2px;
+  min-height: 18px;
+}
+.cc-chip {
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.cc-loupe {
+  position: relative;
+  flex-shrink: 0;
+  width: 168px;
+  height: 165px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--card-deep);
+}
+.cc-loupe canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+.cc-pin {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -100%);
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.35));
+  pointer-events: none;
+  opacity: 0;
+}
+.cc-loupe.has-capture .cc-pin {
+  opacity: 1;
+}
+.cc-dropper {
+  position: absolute;
+  right: 9px;
+  bottom: 7px;
+  width: 17px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #b2b2b2;
+  cursor: pointer;
+}
+.cc-dropper:hover,
+.color-card.picking .cc-dropper {
+  color: #fff;
+}
+.color-card.picking .cc-loupe {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
 /* Staggered entrance for the settings rows. */
 #settings-section:not(.hidden) .settings-row {
   animation: result-enter 0.22s cubic-bezier(0.2, 1, 0.3, 1) both;

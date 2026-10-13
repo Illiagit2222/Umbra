@@ -1,5 +1,6 @@
 #![windows_subsystem = "windows"]
 mod autostart;
+mod color_pick;
 mod commands;
 mod config;
 mod frecency;
@@ -74,7 +75,8 @@ fn main() {
                         let win = win_focus.clone();
                         std::thread::spawn(move || {
                             std::thread::sleep(std::time::Duration::from_millis(150));
-                            if win.is_focused().unwrap_or(true) {
+                            // The eyedropper keeps the window up while the cursor roams the screen.
+                            if win.is_focused().unwrap_or(true) || color_pick::is_picking() {
                                 return;
                             }
                             let _ = win.emit("window-hide-requested", ());
@@ -136,6 +138,8 @@ fn main() {
             commands::download_update,
             commands::install_update,
             commands::get_config_dir,
+            color_pick::start_color_pick,
+            color_pick::cancel_color_pick,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

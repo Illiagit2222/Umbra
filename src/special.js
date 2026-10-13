@@ -36,6 +36,7 @@ function parseOpenTarget(q) {
 }
 function handleSpecialCommand(query) {
   const q = query.trim();
+  if (handleColorCommand(q)) return true;
   const killMatch = q.match(/^kill\s+(.+)/i);
   if (killMatch) {
     const procName = killMatch[1].trim();
@@ -97,6 +98,7 @@ function handleSpecialCommand(query) {
   if (/^!help\s*$/i.test(q)) {
     const cmds = [
       { name: "!help", desc: "Show this help", fill: "" },
+      { name: "#c83939", desc: "Colour info & screen picker", fill: "#" },
       { name: "!yt <query>", desc: "Search YouTube", fill: "!yt " },
       { name: "!g <query>", desc: "Search Google", fill: "!g " },
       { name: "!gh <query>", desc: "Search GitHub", fill: "!gh " },
