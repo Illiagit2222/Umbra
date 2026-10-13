@@ -993,14 +993,18 @@ html[data-pins="right"] #pin-dock {
   outline-offset: -2px;
   border-radius: var(--card-radius);
 }
+/* Tiles are square and exactly as tall as what they sit next to: the search bar for
+   the first one, a result row for the rest, in every density mode. The side padding
+   makes the collapsed width equal that height (the border is inside the box). */
 .dock-tile {
-  --dock-pad: calc((var(--card-h) - var(--result-icon)) / 2 + 2px);
+  --tile-h: var(--card-h);
+  --dock-pad: calc((var(--tile-h) - var(--result-icon)) / 2 - var(--card-border-w));
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: flex-end;
   max-width: 100%;
-  height: var(--card-h);
+  height: var(--tile-h);
   padding: 0 var(--dock-pad);
   background: var(--card-bg);
   border-radius: var(--card-radius);
@@ -1010,7 +1014,7 @@ html[data-pins="right"] #pin-dock {
   transition: background-color 0.1s ease-out, padding 0.2s var(--ease-out-apple);
 }
 .dock-tile:first-child {
-  margin-block: calc((var(--search-h) - var(--card-h)) / 2);
+  --tile-h: var(--search-h);
 }
 html[data-pins="right"] .dock-tile {
   flex-direction: row-reverse;
