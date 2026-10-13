@@ -49,13 +49,11 @@ function renderDock() {
   if (!dockSide || dockDragging) return;
   dockEl.innerHTML = "";
   for (const pin of currentPins) dockEl.appendChild(dockTile(pin));
-  if (currentPins.length === 0) {
-    const empty = document.createElement("div");
-    empty.className = "dock-tile dock-empty";
-    empty.title = "Drag an app here to pin it";
-    empty.innerHTML = `<div class="result-icon">+</div>`;
-    dockEl.appendChild(empty);
-  }
+  // Drop slot; CSS only shows it while something is being dragged towards the dock.
+  const empty = document.createElement("div");
+  empty.className = "dock-tile dock-empty";
+  empty.innerHTML = `<div class="result-icon">+</div>`;
+  dockEl.appendChild(empty);
   loadDockIcons();
 }
 
@@ -179,11 +177,15 @@ function ensureDock() {
     group: { name: "umbra-results", pull: "clone", put: false },
     sort: false,
     forceFallback: true,
+    // The copy under the cursor lives on <body> so the results list's overflow can't clip it.
+    fallbackOnBody: true,
     fallbackTolerance: 6,
     filter: ".result-pin",
     preventOnFilter: false,
     revertOnSpill: true,
     disabled: true,
+    onStart: () => dockEl.classList.add("drag-active"),
+    onEnd: () => dockEl.classList.remove("drag-active"),
   });
 
   // Files dragged in from Explorer.
@@ -195,10 +197,11 @@ function ensureDock() {
     return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
   };
   const events = window.__TAURI__.event;
+  events.listen("tauri://drag-enter", () => dockEl.classList.toggle("drag-active", !!dockSide));
   events.listen("tauri://drag-over", (e) => dockEl.classList.toggle("drop-target", pointOverDock(e.payload.position)));
-  events.listen("tauri://drag-leave", () => dockEl.classList.remove("drop-target"));
+  events.listen("tauri://drag-leave", () => dockEl.classList.remove("drop-target", "drag-active"));
   events.listen("tauri://drag-drop", async (e) => {
-    dockEl.classList.remove("drop-target");
+    dockEl.classList.remove("drop-target", "drag-active");
     if (!pointOverDock(e.payload.position)) return;
     for (const path of e.payload.paths || []) {
       await pinToDock(dockNameFromPath(path), path, dockKindFromPath(path), currentPins.length);

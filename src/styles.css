@@ -1045,7 +1045,9 @@ html[data-pins="left"] .dock-tile:hover .dock-label {
 html[data-pins="right"] .dock-tile:hover .dock-label {
   margin-left: 18px;
 }
+/* The "+" drop slot only appears while a result row or a file is being dragged. */
 .dock-empty {
+  display: none;
   border-style: dashed;
   box-shadow: none;
   background: transparent;
@@ -1053,8 +1055,25 @@ html[data-pins="right"] .dock-tile:hover .dock-label {
   font-size: 20px;
   cursor: default;
 }
+#pin-dock.drag-active .dock-empty {
+  display: flex;
+}
 .dock-tile.sortable-ghost {
   opacity: 0.35;
+}
+/* While a result row hovers the dock, Sortable puts the row itself in the column as the
+   drop placeholder; show just its icon, shaped like a tile, instead of a clipped row. */
+#pin-dock > .result-item,
+body > .result-item.sortable-fallback {
+  width: auto !important;
+  gap: 0;
+  padding: 0 calc((var(--card-h) - var(--result-icon)) / 2 + 2px);
+  animation: none;
+  opacity: 0.6;
+}
+#pin-dock > .result-item > :not(.result-icon),
+body > .result-item.sortable-fallback > :not(.result-icon) {
+  display: none;
 }
 /* Custom scrollbar — the native one is hidden on #results-container. */
 #custom-scrollbar {
@@ -1193,7 +1212,9 @@ html[data-pins="right"] .dock-tile:hover .dock-label {
   opacity: 0.4;
   background-color: var(--card-bg) !important;
 }
-.result-item.sortable-drag {
+/* Scoped to the pins list: as a bare .result-item rule its !important transform also
+   froze the copy that follows the cursor when a result row is dragged to the dock. */
+#pins-list .result-item.sortable-drag {
   cursor: grabbing !important;
   opacity: 1 !important;
   transform: scale(0.95) !important;
