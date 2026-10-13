@@ -1319,7 +1319,11 @@ html[data-border-pos="outer"] :is(#search-box, .settings-card, #content-menu, #c
   opacity: 0.8;
   text-decoration: underline;
 }
+/* The "Type to search · Tab completes · …" line is retired; the animated
+   placeholder examples already show what to type. main.js still toggles
+   .hidden on it, which is harmless. */
 #hint {
+  display: none;
   font-size: 13px;
   color: var(--text-dim);
   text-align: center;
