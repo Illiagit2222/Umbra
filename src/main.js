@@ -797,6 +797,7 @@ function applyTheme() {
   root.style.setProperty("--card-border-w", (theme.borderOn ? theme.borderW : 0) + "px");
   root.dataset.borderPos = theme.borderOn ? theme.borderPos : "center";
   root.style.setProperty("--glow-size", (theme.glow ? theme.glowStrength : 0) + "px");
+  if (typeof applyDock === "function") applyDock();
   setVal(radiusVal, theme.radius);
   setVal(alphaVal, Math.round(theme.cardAlpha * 100) + "%");
   setVal(borderWVal, theme.borderW);
@@ -1288,8 +1289,13 @@ function hideWindow() {
     isHiding = false;
   }, 280);
 }
+// False while pins live in the side dock (dock.js) instead of under the empty search box.
+function pinsInList() {
+  const style = document.documentElement.dataset.pins;
+  return style !== "left" && style !== "right";
+}
 function updateSelectableItems() {
-  if (lastQuery.trim()) {
+  if (lastQuery.trim() || !pinsInList()) {
     selectableItems = [...allResults];
   } else {
     selectableItems = [...currentPins, ...allResults];
@@ -1414,6 +1420,7 @@ function renderPins(pins) {
     const el = createResultItem({ ...pin, pinned: true }, i, lastQuery);
     pinsList.appendChild(el);
   });
+  if (typeof renderDock === "function") renderDock();
 
 }
 Sortable.create(pinsList, {
@@ -1775,6 +1782,7 @@ async function togglePin(btn) {
     pinsSection.classList.toggle("hidden", currentPins.length === 0 || !!lastQuery.trim());
     updateSelection();
     updateCustomScrollbar();
+    if (typeof renderDock === "function") renderDock();
   } catch (e) {
     showToast("Pin failed", true, String(e).replace("Error:", "").trim());
   }
@@ -1844,7 +1852,11 @@ document.addEventListener("contextmenu", (e) => {
   e.preventDefault();
   const index = parseInt(resultItem.dataset.index);
   const target = index >= 0 && index < selectableItems.length ? selectableItems[index] : null;
-
+  openContextMenu(e, target);
+});
+// Shows the Open / Open as admin / Open directory / Copy path menu for `target`
+// at the pointer; also used by the pinned-apps dock (dock.js).
+function openContextMenu(e, target) {
   contextTargetItem = target && target.path ? target : null;
   const z = uiZoom();
   const menuW = contextMenu.offsetWidth;
@@ -1858,7 +1870,7 @@ document.addEventListener("contextmenu", (e) => {
   contextMenu.style.left = x / z + "px";
   contextMenu.style.top = y / z + "px";
   contextMenu.classList.add("visible");
-});
+}
 document.addEventListener("click", (e) => {
   if (!contextMenu.classList.contains("visible")) return;
   if (contextMenu.contains(e.target)) return;
@@ -1994,7 +2006,7 @@ async function performSearch(query) {
         : "No results found";
     }
 
-    hint.classList.toggle("hidden", !(isEmpty && !hasPins));
+    hint.classList.toggle("hidden", !(isEmpty && !(hasPins && pinsInList())));
     updateSelection();
     updateGhost();
     pinsSection.classList.toggle("hidden", !hasPins || !isEmpty);
@@ -2154,12 +2166,14 @@ let resizeState = null;
 let resizeRaf = null;
 let pendingSize = null;
 function setMainSize(w, h) {
-  const cw = Math.max(MAIN_MIN_W, Math.min(MAIN_MAX_W, Math.round(w)));
+  // The pinned-apps dock (dock.js) widens the window on its side; w/h stay the panel's size.
+  const dockW = typeof dockExtraWidth === "function" ? dockExtraWidth() : 0;
+  const cw = Math.max(MAIN_MIN_W, Math.min(MAIN_MAX_W - dockW, Math.round(w)));
   const ch = Math.max(MAIN_MIN_H, Math.min(MAIN_MAX_H, Math.round(h)));
   if (cw === mainLogicalW && ch === mainLogicalH) return;
   mainLogicalW = cw;
   mainLogicalH = ch;
-  pendingSize = { width: cw, height: ch };
+  pendingSize = { width: cw + dockW, height: ch };
   if (!resizeRaf) resizeRaf = requestAnimationFrame(() => {
     resizeRaf = null;
     if (pendingSize) invoke("resize_main_window", pendingSize).catch(() => {});
