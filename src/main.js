@@ -1858,6 +1858,9 @@ document.addEventListener("contextmenu", (e) => {
 // at the pointer; also used by the pinned-apps dock (dock.js).
 function openContextMenu(e, target) {
   contextTargetItem = target && target.path ? target : null;
+  const pinLabel = contextMenu.querySelector('[data-action="pin"] .ctx-item-label');
+  pinLabel.dataset.i18n = contextTargetItem && isPinned(contextTargetItem.path) ? "ctxUnpin" : "ctxPin";
+  pinLabel.textContent = t(pinLabel.dataset.i18n);
   const z = uiZoom();
   const menuW = contextMenu.offsetWidth;
   const menuH = contextMenu.offsetHeight;
@@ -1904,9 +1907,34 @@ contextMenu.addEventListener("click", (e) => {
     case "copy":
       copyPath(path);
       break;
+    case "pin":
+      setItemPinned(contextTargetItem, !isPinned(path));
+      break;
   }
   contextMenu.classList.remove("visible");
 });
+function isPinned(path) {
+  return currentPins.some((p) => p.path === path);
+}
+// Pin or unpin from the context menu. A row's pin button on screen goes through
+// togglePin so the list updates in place; otherwise (e.g. a dock tile that isn't in
+// the current results) pin directly and refresh.
+async function setItemPinned(item, pin) {
+  const sel = '.result-pin[data-path="' + CSS.escape(item.path) + '"]';
+  const btn = resultsList.querySelector(sel) || pinsList.querySelector(sel);
+  if (btn) {
+    if (btn.classList.contains("pinned") !== pin) await togglePin(btn);
+    return;
+  }
+  try {
+    if (pin) await invoke("add_pin", { name: item.name, path: item.path, kind: item.kind || "file" });
+    else await invoke("remove_pin", { path: item.path });
+  } catch (e) {
+    showToast("Pin failed", true, String(e).replace("Error:", "").trim());
+    return;
+  }
+  performSearch(lastQuery);
+}
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && contextMenu.classList.contains("visible")) {
     contextMenu.classList.remove("visible");
