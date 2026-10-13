@@ -61,6 +61,23 @@ pub(crate) fn entry_to_result(e: &SearchEntry) -> SearchResult {
         score: crate::search::ScoreKey::default(),
     }
 }
+/// A result for `path` if it is a program (exe / msi / lnk / url) that still exists.
+pub(crate) fn program_result(path: &str) -> Option<SearchResult> {
+    let p = Path::new(path);
+    if !p.is_file() {
+        return None;
+    }
+    let name = p.file_name()?.to_string_lossy().to_string();
+    let kind = kind_from_file(&name, false);
+    if kind != KIND_APP && kind != KIND_SHORTCUT {
+        return None;
+    }
+    Some(entry_to_result(&SearchEntry {
+        name_lower: name.to_lowercase().into_boxed_str(),
+        path: path.to_string(),
+        kind,
+    }))
+}
 /// Read-only access to the live index for the query layer.
 pub(crate) fn with_entries<R>(f: impl FnOnce(&[SearchEntry]) -> R) -> Option<R> {
     INDEX.get().and_then(|rw| rw.read().ok()).map(|r| f(&r))
@@ -910,6 +927,23 @@ mod tests {
     fn touch(path: PathBuf) {
         fs::create_dir_all(path.parent().unwrap()).unwrap();
         fs::write(path, b"").unwrap();
+    }
+    #[test]
+    fn program_result_takes_existing_apps_and_shortcuts_only() {
+        let dir = temp_dir("recent");
+        for f in ["Tool.exe", "Game.lnk", "Site.url", "notes.txt"] {
+            touch(dir.join(f));
+        }
+        let path = |f: &str| dir.join(f).to_string_lossy().to_string();
+        let app = program_result(&path("Tool.exe")).unwrap();
+        assert_eq!((app.name.as_str(), app.kind.as_str()), ("Tool", "app"));
+        assert_eq!(program_result(&path("Game.lnk")).unwrap().kind, "shortcut");
+        assert_eq!(program_result(&path("Site.url")).unwrap().kind, "shortcut");
+        assert!(program_result(&path("notes.txt")).is_none());
+        assert!(program_result(&path("Gone.exe")).is_none());
+        assert!(program_result(&dir.to_string_lossy()).is_none());
+        assert!(program_result("https://www.google.com/search?q=cats").is_none());
+        let _ = fs::remove_dir_all(&dir);
     }
     #[test]
     fn pruned_walk_skips_whole_excluded_subtrees() {

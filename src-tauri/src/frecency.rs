@@ -51,6 +51,17 @@ pub fn scores_snapshot() -> std::collections::HashMap<String, f64> {
         .map(|(k, v)| (k.clone(), v.score))
         .collect()
 }
+/// Everything ever launched (paths and URLs), most recently used first.
+pub fn recent_ids() -> Vec<String> {
+    ensure_db();
+    let guard = DB.lock().unwrap();
+    most_recent_first(&guard.as_ref().unwrap().entries)
+}
+fn most_recent_first(entries: &HashMap<String, FrecencyEntry>) -> Vec<String> {
+    let mut list: Vec<&FrecencyEntry> = entries.values().collect();
+    list.sort_by(|a, b| b.last_used.partial_cmp(&a.last_used).unwrap_or(std::cmp::Ordering::Equal));
+    list.into_iter().map(|e| e.id.clone()).collect()
+}
 static SAVE_PENDING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 fn save_db(db: &FrecencyDb) {
     if SAVE_PENDING.swap(true, std::sync::atomic::Ordering::SeqCst) {
@@ -81,4 +92,15 @@ fn chrono_timestamp() -> f64 {
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs_f64()
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn most_recent_first_orders_by_last_use() {
+        let entry = |id: &str, score: f64, last_used: f64| (id.to_string(), FrecencyEntry { id: id.to_string(), score, last_used });
+        let entries: HashMap<String, FrecencyEntry> =
+            [entry("old", 900.0, 10.0), entry("newest", 100.0, 30.0), entry("middle", 500.0, 20.0)].into_iter().collect();
+        assert_eq!(most_recent_first(&entries), vec!["newest", "middle", "old"]);
+    }
 }

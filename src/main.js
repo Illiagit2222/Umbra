@@ -1405,7 +1405,8 @@ function renderResults(results, query) {
   const hasSpecial = !specialSection.classList.contains("hidden");
   const showEmpty = results.length === 0 && query.trim() && !hasPins && !hasSpecial;
   emptyState.classList.toggle("hidden", !showEmpty);
-  let globalIndex = query.trim() ? 0 : currentPins.length;
+  // Rows are numbered after the pin list only when that list is shown above them.
+  let globalIndex = query.trim() || !pinsInList() ? 0 : currentPins.length;
   for (const item of results) {
     const el = createResultItem(item, globalIndex, query);
     resultsList.appendChild(el);
@@ -1499,7 +1500,7 @@ function requestIconsForResults(results) {
 }
 function applySelection(doScroll) {
   const containers = [];
-  if (lastQuery.trim()) {
+  if (lastQuery.trim() || !pinsInList()) {
     containers.push(resultsList);
   } else {
     if (currentPins.length > 0) containers.push(pinsList);
@@ -2014,6 +2015,11 @@ async function performSearch(query) {
   try {
     const response = await invoke("search_all", { query });
     if (myId !== currentSearchId) return;
+    if (!query.trim() && !pinsInList()) {
+      // The pins live in the side dock, so the empty box lists recently opened programs.
+      response.results = await invoke("get_recent_apps", { limit: 8 }).catch(() => []);
+      if (myId !== currentSearchId) return;
+    }
     allResults = response.results;
     renderPins(response.pins);
     updateSelectableItems();
@@ -2039,7 +2045,7 @@ async function performSearch(query) {
     updateGhost();
     pinsSection.classList.toggle("hidden", !hasPins || !isEmpty);
     resultsSection.classList.toggle("hidden", !hasResults);
-    if (isEmpty && hasPins) resultsSection.classList.add("hidden");
+    if (isEmpty && hasPins && pinsInList()) resultsSection.classList.add("hidden");
   } catch (err) {
     console.error("Search error:", err);
   }
