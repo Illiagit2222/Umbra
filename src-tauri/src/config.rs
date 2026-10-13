@@ -110,6 +110,9 @@ pub struct ThemeConfig {
     pub radius: u32,
     #[serde(default = "default_density")]
     pub density: String,
+    /// Experimental: stretch the window down to the bottom of the screen's work area.
+    #[serde(default)]
+    pub tall_results: bool,
     pub text: String,
     pub glow: bool,
     pub glow_strength: u32,
@@ -146,6 +149,7 @@ impl Default for ThemeConfig {
             card_alpha: 1.0,
             radius: 12,
             density: default_density(),
+            tall_results: false,
             text: "#e3e3e3".into(),
             glow: false,
             glow_strength: 14,
@@ -457,6 +461,14 @@ mod tests {
             ..Default::default()
         };
         assert_eq!(bogus.sanitized().density, "full");
+    }
+    #[test]
+    fn tall_results_defaults_off_and_uses_the_camel_case_key() {
+        let cfg: Config = serde_json::from_str(r#"{"theme": {"density": "full"}}"#).unwrap();
+        assert!(!cfg.theme.tall_results);
+        let on: ThemeConfig = serde_json::from_str(r#"{"tallResults": true}"#).unwrap();
+        assert!(on.tall_results);
+        assert!(serde_json::to_string(&on).unwrap().contains(r#""tallResults":true"#));
     }
     #[test]
     fn a_config_written_before_density_existed_still_loads() {

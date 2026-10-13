@@ -135,8 +135,11 @@ pub fn get_theme() -> config::ThemeConfig {
     config::get_theme()
 }
 #[tauri::command]
-pub fn set_theme(theme: config::ThemeConfig) -> config::ThemeConfig {
-    config::set_theme(theme)
+pub fn set_theme(app: tauri::AppHandle, theme: config::ThemeConfig) -> config::ThemeConfig {
+    let saved = config::set_theme(theme);
+    // Apply "results to screen bottom" right away rather than on the next summon.
+    super::refit_window(&app);
+    saved
 }
 #[tauri::command]
 pub fn get_language() -> String {
