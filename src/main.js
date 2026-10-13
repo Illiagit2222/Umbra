@@ -2215,7 +2215,9 @@ document.addEventListener("pointerdown", (e) => {
   }
   const onCard =
     e.target instanceof Element &&
-    e.target.closest("#search-box, .result-item, .special-card, .settings-card, #context-menu, #content-menu, #color-picker, .drag-bar, .side-pill");
+    // #pin-dock covers the whole dock column, so grabbing a tile to drag it, or
+    // missing a tile by a few pixels, doesn't count as a click outside the window.
+    e.target.closest("#search-box, .result-item, .special-card, .settings-card, #context-menu, #content-menu, #color-picker, .drag-bar, .side-pill, #pin-dock");
   if (!onCard) {
     hideWindow();
   }
