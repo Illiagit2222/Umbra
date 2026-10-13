@@ -94,6 +94,7 @@ function handleSpecialCommand(query) {
     });
     return true;
   }
+  if (handleCurrencyCommand(q)) return true;
   if (/^!help\s*$/i.test(q)) {
     const cmds = [
       { name: "!help", desc: "Show this help", fill: "" },
@@ -105,6 +106,7 @@ function handleSpecialCommand(query) {
       { name: "!npm <query>", desc: "Search npm", fill: "!npm " },
       { name: "!red <query>", desc: "Search Reddit", fill: "!red " },
       { name: "!so <query>", desc: "Search StackOverflow", fill: "!so " },
+      { name: "100 usd to rub", desc: "Currency converter", fill: "100 usd to " },
       { name: "kill <proc>", desc: "Kill process", fill: "kill " },
       { name: "shutdown|restart|sleep", desc: "Power actions", fill: "" },
       { name: "<link or path>", desc: "Open a URL, file or folder", fill: "" },

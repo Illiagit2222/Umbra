@@ -2044,6 +2044,10 @@ searchInput.addEventListener("keydown", (e) => {
         }
         return;
       }
+      if (item.kind === "copy") {
+        if (item.path) copyPath(item.path);
+        return;
+      }
       if (e.ctrlKey && e.shiftKey) {
         hideWindow(); 
         invoke("launch_admin", { path: item.path })

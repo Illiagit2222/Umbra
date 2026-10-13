@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600&family=Google+Sans+Flex:wght@400&display=swap');
 /* Registering the layout lengths makes them animatable, so switching density
    morphs the UI instead of snapping. Without @property a var() change is a
    discrete swap no transition can catch. */
@@ -1361,6 +1361,164 @@ html[data-border-pos="outer"] :is(#search-box, .settings-card, #content-menu, #c
   display: flex;
   align-items: center;
   justify-content: center;
+}
+/* Currency widget ("100 usd to rub") */
+.fx-card {
+  --fx-up: #4CC38A;
+  --fx-down: #FF4242;
+  --fx-font-num: 'Google Sans Flex', var(--font-main);
+  display: flex;
+  gap: 16px;
+  padding: 19px 18px 19px 20px;
+}
+.fx-main {
+  flex: 0 1 254px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding-top: 13px;
+}
+.fx-sum {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 35px;
+  margin-top: 4px;
+  font-size: 36px;
+  white-space: nowrap;
+  overflow: hidden;
+  cursor: pointer;
+}
+.fx-sum:not([title]) {
+  cursor: default;
+}
+.fx-part {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+.fx-val {
+  font-family: var(--fx-font-num);
+  font-size: 1em;
+  font-weight: var(--weight-regular);
+  line-height: 35px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.fx-val.fx-pending {
+  color: var(--text-dim);
+}
+/* Stolzl Regular renders noticeably heavier on Windows than in Figma; Light matches the mock. */
+.fx-code {
+  font-size: 16px;
+  font-weight: var(--weight-light);
+  line-height: 15px;
+  color: var(--text);
+}
+.fx-arrow {
+  flex-shrink: 0;
+  position: relative;
+  top: -0.06em;
+  color: var(--text);
+}
+.fx-rate {
+  margin-top: 12px;
+  font-size: 17px;
+  font-weight: var(--weight-light);
+  line-height: 20px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fx-muted {
+  color: var(--text-dim);
+}
+.fx-chips {
+  display: flex;
+  gap: 10px;
+  margin-top: 13px;
+}
+.fx-chip {
+  min-width: 80px;
+  height: 25px;
+  padding: 0 11px;
+  border: none;
+  border-radius: 5px;
+  background: var(--card-hover);
+  color: var(--text);
+  font-family: var(--font-main);
+  font-size: 12px;
+  font-weight: var(--weight-light);
+  line-height: 14px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.fx-chip:hover {
+  background: var(--card-line);
+}
+.fx-chip:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+}
+.fx-graph {
+  flex: 1 0 238px;
+  height: 122px;
+  border-radius: 5px;
+  background: var(--card-hover);
+}
+.fx-graph--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+.fx-chart {
+  display: block;
+  overflow: visible;
+}
+.fx-grid {
+  fill: none;
+  stroke: var(--text);
+  stroke-opacity: 0.15;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.fx-line {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.fx-dot {
+  fill: var(--text);
+}
+.fx-cursor-line {
+  stroke: var(--text);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.fx-tip {
+  fill: var(--text);
+  font-family: var(--fx-font-num);
+  font-size: 10px;
+  font-weight: var(--weight-regular);
+}
+.fx-change-text {
+  fill: currentColor;
+  font-family: var(--fx-font-num);
+  font-size: 12px;
+  font-weight: var(--weight-regular);
+}
+.fx-change--down {
+  color: var(--fx-down);
+}
+.fx-change--up {
+  color: var(--fx-up);
+}
+.fx-change--flat {
+  color: var(--text-dim);
 }
 /* HSV color picker (accent / background), built in main.js. */
 #color-picker {
