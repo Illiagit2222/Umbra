@@ -817,6 +817,120 @@ html[data-border-pos="outer"] :is(#search-box, .settings-card, #content-menu, #c
 .swatch {
   transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
+/* Pinned apps dock (dock.js). The window grows by --dock-reserve on the dock's
+   side; tiles hug the panel 12px away and grow outward to show the app name.
+   The first tile is centred on the search bar, the rest line up with the rows. */
+html[data-pins="left"],
+html[data-pins="right"] {
+  --dock-reserve: 168px;
+}
+html[data-pins="left"] #app-container {
+  padding-left: var(--dock-reserve);
+}
+html[data-pins="right"] #app-container {
+  padding-right: var(--dock-reserve);
+}
+html[data-pins="left"] #pins-section,
+html[data-pins="right"] #pins-section {
+  display: none;
+}
+html[data-pins="right"] .side-pill {
+  right: calc(var(--dock-reserve) + 6px);
+}
+#pin-dock {
+  position: absolute;
+  bottom: 0;
+  width: calc(var(--dock-reserve) + var(--pad-x) - 12px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--gap);
+  padding-bottom: var(--gap);
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+}
+#pin-dock::-webkit-scrollbar {
+  display: none;
+}
+#pin-dock[hidden] {
+  display: none;
+}
+html[data-pins="left"] #pin-dock {
+  left: 0;
+}
+html[data-pins="right"] #pin-dock {
+  right: 0;
+  align-items: flex-start;
+}
+#pin-dock.drop-target {
+  outline: 2px dashed var(--accent);
+  outline-offset: -2px;
+  border-radius: var(--card-radius);
+}
+.dock-tile {
+  --dock-pad: calc((var(--card-h) - var(--result-icon)) / 2 + 2px);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  max-width: 100%;
+  height: var(--card-h);
+  padding: 0 var(--dock-pad);
+  background: var(--card-bg);
+  border-radius: var(--card-radius);
+  border: var(--card-border-w) solid var(--card-border);
+  box-shadow: var(--card-shadow);
+  cursor: pointer;
+  transition: background-color 0.1s ease-out, padding 0.2s var(--ease-out-apple);
+}
+.dock-tile:first-child {
+  margin-block: calc((var(--search-h) - var(--card-h)) / 2);
+}
+html[data-pins="right"] .dock-tile {
+  flex-direction: row-reverse;
+}
+.dock-tile:hover {
+  background: var(--card-hover);
+}
+html[data-pins="left"] .dock-tile:not(.dock-empty):hover {
+  padding-left: 18px;
+}
+html[data-pins="right"] .dock-tile:not(.dock-empty):hover {
+  padding-right: 18px;
+}
+.dock-label {
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 15px;
+  font-weight: var(--weight-medium);
+  color: var(--text);
+  transition: max-width 0.2s var(--ease-out-apple), opacity 0.15s ease-out, margin 0.2s var(--ease-out-apple);
+}
+.dock-tile:hover .dock-label {
+  max-width: 92px;
+  opacity: 1;
+}
+html[data-pins="left"] .dock-tile:hover .dock-label {
+  margin-right: 18px;
+}
+html[data-pins="right"] .dock-tile:hover .dock-label {
+  margin-left: 18px;
+}
+.dock-empty {
+  border-style: dashed;
+  box-shadow: none;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 20px;
+  cursor: default;
+}
+.dock-tile.sortable-ghost {
+  opacity: 0.35;
+}
 /* Custom scrollbar — the native one is hidden on #results-container. */
 #custom-scrollbar {
   position: absolute;

@@ -119,6 +119,10 @@ pub struct ThemeConfig {
     pub border_w: f64,
     #[serde(default = "default_border_pos")]
     pub border_pos: String,
+    /// Where pinned apps live: `list` (under the empty search box) or a dock
+    /// column on the `left` / `right` of the window.
+    #[serde(default = "default_pins_style")]
+    pub pins_style: String,
 
     #[serde(default)]
     pub light_mode: bool,
@@ -133,6 +137,9 @@ fn default_border_w() -> f64 {
 }
 fn default_border_pos() -> String {
     "inner".into()
+}
+fn default_pins_style() -> String {
+    "list".into()
 }
 /// Density presets: `full`, `compact-results`, `compact-full`.
 fn default_density() -> String {
@@ -152,6 +159,7 @@ impl Default for ThemeConfig {
             border_on: default_border_on(),
             border_w: default_border_w(),
             border_pos: default_border_pos(),
+            pins_style: default_pins_style(),
             light_mode: false,
             custom_theme: None,
         }
@@ -181,6 +189,10 @@ impl ThemeConfig {
         match self.border_pos.as_str() {
             "inner" | "outer" => {}
             _ => self.border_pos = "inner".into(),
+        }
+        match self.pins_style.as_str() {
+            "list" | "left" | "right" => {}
+            _ => self.pins_style = default_pins_style(),
         }
         self
     }
@@ -464,5 +476,16 @@ mod tests {
         // must fall back to the default rather than failing to parse.
         let cfg: Config = serde_json::from_str(r#"{"cardH": 64, "zoom": 1.0}"#).unwrap();
         assert_eq!(cfg.theme.density, "full");
+    }
+    #[test]
+    fn pins_style_defaults_to_the_list_and_rejects_unknown_values() {
+        let cfg: Config = serde_json::from_str(r#"{"theme": {}}"#).unwrap();
+        assert_eq!(cfg.theme.pins_style, "list");
+        for side in ["list", "left", "right"] {
+            let theme: ThemeConfig = serde_json::from_str(&format!(r#"{{"pinsStyle": "{side}"}}"#)).unwrap();
+            assert_eq!(theme.sanitized().pins_style, side);
+        }
+        let bogus: ThemeConfig = serde_json::from_str(r#"{"pinsStyle": "top"}"#).unwrap();
+        assert_eq!(bogus.sanitized().pins_style, "list");
     }
 }
