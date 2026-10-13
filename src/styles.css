@@ -964,6 +964,10 @@ html[data-pins="right"] .side-pill {
 }
 #pin-dock {
   position: absolute;
+  /* Level with the search bar: #app-container's padding-top (--pad-y), the drag bar
+     (--pad-y + 20px) and its bottom margin (--pad-y - 4px). Computed rather than measured
+     so it follows the animated density change instead of catching its first frame. */
+  top: calc(3 * var(--pad-y) + 16px);
   bottom: 0;
   width: calc(var(--dock-reserve) + var(--pad-x) - 12px);
   display: flex;

@@ -76,12 +76,6 @@ function loadDockIcons() {
     .catch((err) => console.error("Dock icon load failed:", err));
 }
 
-// Line the first tile up with the search bar; the rest follow the result rows.
-function positionDock() {
-  const box = document.getElementById("search-box");
-  if (dockEl && box) dockEl.style.top = box.offsetTop + "px";
-}
-
 async function saveDockOrder(paths) {
   const map = new Map(currentPins.map((p) => [p.path, p]));
   currentPins = paths.map((p) => map.get(p)).filter(Boolean);
@@ -247,6 +241,5 @@ function applyDock() {
     dockSide = side;
     resizeForDock(before);
   }
-  positionDock();
   renderDock();
 }
