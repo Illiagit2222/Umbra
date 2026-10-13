@@ -1943,7 +1943,14 @@ function fetchWithTimeout(url, ms = 8000) {
 }
 async function performSearch(query) {
   lastQuery = query;
-  if (handleSpecialCommand(query)) return;
+  if (handleSpecialCommand(query)) {
+    // Drop any search still in flight (it would render its results under the
+    // card) and clear what the last search left on screen.
+    currentSearchId++;
+    hint.classList.add("hidden");
+    emptyState.classList.add("hidden");
+    return;
+  }
   specialSection.classList.add("hidden");
 
   settingsSection.classList.add("hidden");
