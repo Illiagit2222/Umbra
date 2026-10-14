@@ -178,8 +178,14 @@ function ensureDock() {
     preventOnFilter: false,
     revertOnSpill: true,
     disabled: true,
-    onStart: () => dockEl.classList.add("drag-active"),
-    onEnd: () => dockEl.classList.remove("drag-active"),
+    onStart: () => {
+      rowDragging = true;
+      dockEl.classList.add("drag-active");
+    },
+    onEnd: () => {
+      endRowDrag();
+      dockEl.classList.remove("drag-active");
+    },
   });
 
   // Files dragged in from Explorer.
