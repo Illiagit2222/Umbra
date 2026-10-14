@@ -1817,9 +1817,15 @@ body > .result-item.sortable-fallback > :not(.result-icon) {
   border-radius: 14px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45), 0 0 var(--glow-size) var(--glow-alpha);
   z-index: 1000;
+  /* Grows out of the swatch it was opened from (transform-origin is set in openPicker). */
+  transform-origin: top right;
+  transition: opacity 0.18s ease, transform 0.22s cubic-bezier(0.2, 1, 0.3, 1), visibility 0s linear 0s;
 }
 #color-picker.cp-hidden {
-  display: none;
+  visibility: hidden;
+  opacity: 0;
+  transform: scale(0.92);
+  transition: opacity 0.15s ease, transform 0.15s ease, visibility 0s linear 0.15s;
 }
 .cp-sv {
   position: relative;
