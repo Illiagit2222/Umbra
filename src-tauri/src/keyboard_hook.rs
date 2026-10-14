@@ -1,11 +1,12 @@
 use std::sync::{Mutex, OnceLock};
 use std::time::{Instant, Duration};
 use tauri::{AppHandle, Manager, Emitter};
-use windows_sys::Win32::Foundation::{LPARAM, LRESULT, WPARAM};
+use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
+use windows_sys::Win32::UI::Shell::{DefSubclassProc, SetWindowSubclass};
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState;
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-    CallNextHookEx, SetWindowsHookExW, WH_KEYBOARD_LL, KBDLLHOOKSTRUCT, WM_KEYDOWN,
-    WM_SYSKEYDOWN, WM_KEYUP, WM_SYSKEYUP,
+    CallNextHookEx, SetWindowsHookExW, WH_KEYBOARD_LL, KBDLLHOOKSTRUCT, SC_KEYMENU, WM_KEYDOWN,
+    WM_SYSCOMMAND, WM_SYSKEYDOWN, WM_KEYUP, WM_SYSKEYUP,
 };
 static APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
 static HOOK_HANDLE: OnceLock<isize> = OnceLock::new();
@@ -29,6 +30,38 @@ pub fn init(app: AppHandle) {
             let _ = HOOK_HANDLE.set(hook as isize);
         }
     }
+}
+/// While Umbra itself has focus, Alt+Space doesn't reach the hook: Windows turns it into
+/// WM_SYSCOMMAND / SC_KEYMENU for the window, which opens the system menu (Restore, Move,
+/// Close...) before the page ever sees the Space. Umbra has no use for that menu, or for
+/// the menu mode a lone Alt enters, so the window drops both, and Alt+Space hides Umbra
+/// when it is the hotkey.
+pub fn guard_system_menu(window: &tauri::WebviewWindow) {
+    if let Ok(hwnd) = window.hwnd() {
+        unsafe {
+            SetWindowSubclass(hwnd.0 as HWND, Some(system_menu_proc), 1, 0);
+        }
+    }
+}
+unsafe extern "system" fn system_menu_proc(
+    hwnd: HWND,
+    msg: u32,
+    wparam: WPARAM,
+    lparam: LPARAM,
+    _id: usize,
+    _data: usize,
+) -> LRESULT {
+    if msg == WM_SYSCOMMAND && (wparam as u32 & 0xFFF0) == SC_KEYMENU {
+        let alt_space = HotkeyDef { vk: 0x20, alt: true, ..Default::default() };
+        let is_hotkey = CURRENT_HOTKEY.get().is_some_and(|m| *m.lock().unwrap() == alt_space);
+        if lparam == 0x20 && is_hotkey {
+            if let Some(win) = APP_HANDLE.get().and_then(|app| app.get_webview_window("main")) {
+                let _ = win.emit("window-hide-requested", ());
+            }
+        }
+        return 0;
+    }
+    DefSubclassProc(hwnd, msg, wparam, lparam)
 }
 const DEFAULT_HOTKEY: &str = "alt+space";
 /// Falls back to the built-in default when the stored hotkey is unusable
