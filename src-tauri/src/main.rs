@@ -96,7 +96,7 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::search_all,
-            commands::get_recent_apps,
+            commands::get_recent_items,
             commands::launch_item,
             commands::launch_admin,
             commands::kill_process,

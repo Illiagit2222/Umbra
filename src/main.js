@@ -1317,6 +1317,7 @@ function getTypeIcon(kind) {
     audio: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`,
     video: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>`,
     archive: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>`,
+    link: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`,
   };
   return icons[kind] || icons.file;
 }
@@ -1365,7 +1366,7 @@ function getExtGroup(path) {
   return "file";
 }
 function getVisualKind(item) {
-  if (item.kind === "folder") return "folder";
+  if (item.kind === "folder" || item.kind === "link") return item.kind;
   return needsRealIcon(item) ? (item.kind || "file") : getExtGroup(item.path);
 }
 function createResultItem(item, index, query) {
@@ -2016,8 +2017,8 @@ async function performSearch(query) {
     const response = await invoke("search_all", { query });
     if (myId !== currentSearchId) return;
     if (!query.trim() && !pinsInList()) {
-      // The pins live in the side dock, so the empty box lists recently opened programs.
-      response.results = await invoke("get_recent_apps", { limit: 8 }).catch(() => []);
+      // The pins live in the side dock, so the empty box lists what was opened recently.
+      response.results = await invoke("get_recent_items", { limit: 8 }).catch(() => []);
       if (myId !== currentSearchId) return;
     }
     allResults = response.results;

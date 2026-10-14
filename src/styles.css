@@ -1279,6 +1279,9 @@ body > .result-item.sortable-fallback > :not(.result-icon) {
 .result-icon-fallback.archive {
   background: #9A6B3C;
 }
+.result-icon-fallback.link {
+  background: #4A72A8;
+}
 .result-icon-fallback svg {
   width: 55%;
   height: 55%;
