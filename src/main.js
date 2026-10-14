@@ -1045,9 +1045,11 @@ function openPicker(anchor, initialHex, onChange) {
   const vh = window.innerHeight * z;
   let x = Math.max(8, Math.min(r.right - pw, vw - pw - 8));
   let y = r.bottom + 10;
-  if (y + ph > vh - 8) y = Math.max(8, r.top - ph - 10);
+  const above = y + ph > vh - 8;
+  if (above) y = Math.max(8, r.top - ph - 10);
   picker.style.left = x / z + "px";
   picker.style.top = y / z + "px";
+  picker.style.transformOrigin = `${(r.left + r.width / 2 - x) / z}px ${above ? "100%" : "0"}`;
 }
 accentCustom.addEventListener("click", () => {
   if (pickerOpen) { closePicker(); return; }
