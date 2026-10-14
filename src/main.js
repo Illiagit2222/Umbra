@@ -1523,9 +1523,34 @@ function applySelection(doScroll) {
     });
   }
 }
+// Hovering a row only borrows the highlight: moving off the rows (onto the search box, or
+// out of the window) hands it back to the row the keyboard or the search had picked (none
+// in the empty box, the first result while searching). null while nothing is borrowed.
+let selectionBeforeHover = null;
 function updateSelection() {
+  selectionBeforeHover = null;
   applySelection(true);
 }
+function endHoverSelection() {
+  if (selectionBeforeHover === null || document.body.classList.contains("is-dragging-pin")) return;
+  selectedIndex = selectionBeforeHover;
+  selectionBeforeHover = null;
+  applySelection(false);
+  updateGhost();
+}
+// Capture phase: runs before a row's own mouseenter moves the highlight onto it.
+document.addEventListener("mouseover", (e) => {
+  const el = e.target instanceof Element ? e.target : null;
+  if (el && el.closest(".result-item")) {
+    if (selectionBeforeHover === null) selectionBeforeHover = selectedIndex;
+    return;
+  }
+  if (el && el.closest("#pins-list, #results-list, #context-menu")) return;
+  endHoverSelection();
+}, true);
+document.documentElement.addEventListener("mouseleave", endHoverSelection);
+// Typing picks a new selection of its own.
+searchInput.addEventListener("input", () => { selectionBeforeHover = null; });
 function clearGhost() {
   ghostTyped.textContent = "";
   ghostRest.textContent = "";
@@ -1840,8 +1865,9 @@ document.addEventListener("mousemove", (e) => {
   if (document.body.classList.contains("is-dragging-pin")) return;
   const item = e.target.closest(".result-item");
   if (item && !item.classList.contains("selected")) {
+    if (selectionBeforeHover === null) selectionBeforeHover = selectedIndex;
     selectedIndex = parseInt(item.dataset.index, 10);
-    updateSelection();
+    applySelection(false);
   }
 });
 document.addEventListener("contextmenu", (e) => {
