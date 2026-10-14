@@ -61,22 +61,36 @@ pub(crate) fn entry_to_result(e: &SearchEntry) -> SearchResult {
         score: crate::search::ScoreKey::default(),
     }
 }
-/// A result for `path` if it is a program (exe / msi / lnk / url) that still exists.
-pub(crate) fn program_result(path: &str) -> Option<SearchResult> {
+/// A result for something Umbra opened before (a launch history id): a web link, or a
+/// program / file / folder that still exists.
+pub(crate) fn recent_result(path: &str) -> Option<SearchResult> {
+    if path.starts_with("http://") || path.starts_with("https://") {
+        return Some(SearchResult {
+            name: link_display_name(path),
+            path: path.to_string(),
+            kind: "link".to_string(),
+            icon: "link".to_string(),
+            pinned: false,
+            icon_data: None,
+            score: crate::search::ScoreKey::default(),
+        });
+    }
     let p = Path::new(path);
-    if !p.is_file() {
+    let is_dir = p.is_dir();
+    if !is_dir && !p.is_file() {
         return None;
     }
     let name = p.file_name()?.to_string_lossy().to_string();
-    let kind = kind_from_file(&name, false);
-    if kind != KIND_APP && kind != KIND_SHORTCUT {
-        return None;
-    }
     Some(entry_to_result(&SearchEntry {
         name_lower: name.to_lowercase().into_boxed_str(),
         path: path.to_string(),
-        kind,
+        kind: kind_from_file(&name, is_dir),
     }))
+}
+/// "https://www.github.com/a/b/" -> "github.com/a/b"
+fn link_display_name(url: &str) -> String {
+    let rest = url.split_once("://").map_or(url, |(_, r)| r);
+    rest.strip_prefix("www.").unwrap_or(rest).trim_end_matches('/').to_string()
 }
 /// Read-only access to the live index for the query layer.
 pub(crate) fn with_entries<R>(f: impl FnOnce(&[SearchEntry]) -> R) -> Option<R> {
@@ -929,20 +943,24 @@ mod tests {
         fs::write(path, b"").unwrap();
     }
     #[test]
-    fn program_result_takes_existing_apps_and_shortcuts_only() {
+    fn recent_result_takes_anything_that_still_exists_and_links() {
         let dir = temp_dir("recent");
-        for f in ["Tool.exe", "Game.lnk", "Site.url", "notes.txt"] {
+        for f in ["Tool.exe", "Game.lnk", "Site.url", "notes.txt", "photo.png"] {
             touch(dir.join(f));
         }
         let path = |f: &str| dir.join(f).to_string_lossy().to_string();
-        let app = program_result(&path("Tool.exe")).unwrap();
+        let kind = |p: &str| recent_result(p).map(|r| r.kind);
+        let app = recent_result(&path("Tool.exe")).unwrap();
         assert_eq!((app.name.as_str(), app.kind.as_str()), ("Tool", "app"));
-        assert_eq!(program_result(&path("Game.lnk")).unwrap().kind, "shortcut");
-        assert_eq!(program_result(&path("Site.url")).unwrap().kind, "shortcut");
-        assert!(program_result(&path("notes.txt")).is_none());
-        assert!(program_result(&path("Gone.exe")).is_none());
-        assert!(program_result(&dir.to_string_lossy()).is_none());
-        assert!(program_result("https://www.google.com/search?q=cats").is_none());
+        assert_eq!(kind(&path("Game.lnk")).as_deref(), Some("shortcut"));
+        assert_eq!(kind(&path("Site.url")).as_deref(), Some("shortcut"));
+        assert_eq!(kind(&path("notes.txt")).as_deref(), Some("document"));
+        assert_eq!(kind(&path("photo.png")).as_deref(), Some("image"));
+        assert_eq!(kind(&dir.to_string_lossy()).as_deref(), Some("folder"));
+        assert!(recent_result(&path("Gone.exe")).is_none());
+        let link = recent_result("https://www.google.com/search?q=cats").unwrap();
+        assert_eq!((link.name.as_str(), link.kind.as_str()), ("google.com/search?q=cats", "link"));
+        assert_eq!(recent_result("https://github.com/Spectrvm/umbra/").unwrap().name, "github.com/Spectrvm/umbra");
         let _ = fs::remove_dir_all(&dir);
     }
     #[test]
