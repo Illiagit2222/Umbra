@@ -1093,6 +1093,11 @@ body > .result-item.sortable-fallback {
 body > .result-item.sortable-fallback > :not(.result-icon) {
   display: none;
 }
+/* Rows have a transform transition, which made the copy trail at half the cursor's speed
+   (see .pin-drag-copy). */
+body > .result-item.sortable-fallback {
+  transition: none;
+}
 /* Custom scrollbar — the native one is hidden on #results-container. */
 #custom-scrollbar {
   position: absolute;
@@ -1230,15 +1235,16 @@ body > .result-item.sortable-fallback > :not(.result-icon) {
   opacity: 0.4;
   background-color: var(--card-bg) !important;
 }
-/* Scoped to the pins list: as a bare .result-item rule its !important transform also
-   froze the copy that follows the cursor when a result row is dragged to the dock. */
-#pins-list .result-item.sortable-drag {
-  cursor: grabbing !important;
+/* The copy of a pin that follows the cursor. Sortable moves it with an inline transform and
+   adds each mouse step to the transform it reads back, so a transform transition (rows have
+   one) would make it trail behind the cursor; the lift uses the separate scale property. */
+body > .result-item.pin-drag-copy {
+  cursor: grabbing;
   opacity: 1 !important;
-  transform: scale(0.95) !important;
-  box-shadow: 0px 8px 24px rgba(0, 0, 0, 0.2) !important;
-  transition: transform 0.1s ease, box-shadow 0.1s ease !important;
-  z-index: 100 !important;
+  scale: 0.97;
+  box-shadow: 0px 8px 24px rgba(0, 0, 0, 0.2);
+  animation: none;
+  transition: none;
 }
 .result-icon {
   width: var(--result-icon);

@@ -1388,6 +1388,7 @@ function createResultItem(item, index, query) {
     <button class="result-pin ${item.pinned ? "pinned" : ""}" data-path="${escapeHtml(item.path)}" data-name="${escapeHtml(item.name)}" data-kind="${item.kind}">${PIN_GLYPH}</button>
    `;
   div.addEventListener("click", (e) => {
+    if (rowDragging) return;
     if (e.target.closest(".result-pin")) { togglePin(e.target.closest(".result-pin")); return; }
     launchItem(item.path);
   });
@@ -1426,6 +1427,12 @@ function renderPins(pins) {
   if (typeof renderDock === "function") renderDock();
 
 }
+// True while a row is being dragged and until the click that the drop's mouseup produces has
+// passed: dropping a row where it was picked up must not launch it.
+let rowDragging = false;
+function endRowDrag() {
+  setTimeout(() => { rowDragging = false; }, 0);
+}
 Sortable.create(pinsList, {
   animation: 250,
   easing: "cubic-bezier(0.25, 1, 0.5, 1)",
@@ -1433,12 +1440,20 @@ Sortable.create(pinsList, {
   dragClass: "sortable-drag",
   delay: 50,
   delayOnTouchOnly: true,
+  // Tauri takes over drag-and-drop on Windows (for files dropped from Explorer), so native
+  // HTML5 dragging never starts in the page; drag with mouse events instead, like the dock.
+  forceFallback: true,
+  fallbackOnBody: true,
+  fallbackClass: "pin-drag-copy",
+  fallbackTolerance: 4,
   filter: ".result-pin",
   preventOnFilter: false,
   onStart: function () {
+    rowDragging = true;
     document.body.classList.add("is-dragging-pin");
   },
   onEnd: function (evt) {
+    endRowDrag();
     document.body.classList.remove("is-dragging-pin");
     if (lastQuery.trim() !== "") return;
 
