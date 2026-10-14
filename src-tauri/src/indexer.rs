@@ -62,16 +62,14 @@ pub(crate) fn entry_to_result(e: &SearchEntry) -> SearchResult {
     }
 }
 /// A result for `path` if it is a program (exe / msi / lnk / url) that still exists.
-pub(crate) fn program_result(path: &str) -> Option<SearchResult> {
+/// A result for `path` if it is a file that still exists, whatever its type.
+pub(crate) fn file_result(path: &str) -> Option<SearchResult> {
     let p = Path::new(path);
     if !p.is_file() {
         return None;
     }
     let name = p.file_name()?.to_string_lossy().to_string();
     let kind = kind_from_file(&name, false);
-    if kind != KIND_APP && kind != KIND_SHORTCUT {
-        return None;
-    }
     Some(entry_to_result(&SearchEntry {
         name_lower: name.to_lowercase().into_boxed_str(),
         path: path.to_string(),
@@ -929,20 +927,23 @@ mod tests {
         fs::write(path, b"").unwrap();
     }
     #[test]
-    fn program_result_takes_existing_apps_and_shortcuts_only() {
+    fn file_result_takes_any_existing_file_only() {
         let dir = temp_dir("recent");
-        for f in ["Tool.exe", "Game.lnk", "Site.url", "notes.txt"] {
+        for f in ["Tool.exe", "Game.lnk", "Site.url", "notes.txt", "photo.png", "clip.mp4"] {
             touch(dir.join(f));
         }
         let path = |f: &str| dir.join(f).to_string_lossy().to_string();
-        let app = program_result(&path("Tool.exe")).unwrap();
+        let app = file_result(&path("Tool.exe")).unwrap();
         assert_eq!((app.name.as_str(), app.kind.as_str()), ("Tool", "app"));
-        assert_eq!(program_result(&path("Game.lnk")).unwrap().kind, "shortcut");
-        assert_eq!(program_result(&path("Site.url")).unwrap().kind, "shortcut");
-        assert!(program_result(&path("notes.txt")).is_none());
-        assert!(program_result(&path("Gone.exe")).is_none());
-        assert!(program_result(&dir.to_string_lossy()).is_none());
-        assert!(program_result("https://www.google.com/search?q=cats").is_none());
+        assert_eq!(file_result(&path("Game.lnk")).unwrap().kind, "shortcut");
+        assert_eq!(file_result(&path("Site.url")).unwrap().kind, "shortcut");
+        let doc = file_result(&path("notes.txt")).unwrap();
+        assert_eq!((doc.name.as_str(), doc.kind.as_str()), ("notes.txt", "document"));
+        assert_eq!(file_result(&path("photo.png")).unwrap().kind, "image");
+        assert_eq!(file_result(&path("clip.mp4")).unwrap().kind, "video");
+        assert!(file_result(&path("Gone.exe")).is_none());
+        assert!(file_result(&dir.to_string_lossy()).is_none());
+        assert!(file_result("https://www.google.com/search?q=cats").is_none());
         let _ = fs::remove_dir_all(&dir);
     }
     #[test]

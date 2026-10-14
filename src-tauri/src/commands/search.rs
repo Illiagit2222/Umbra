@@ -45,16 +45,16 @@ pub async fn search_all(_app: tauri::AppHandle, query: String) -> SearchResponse
         icons_ready: icons::is_precache_done(),
     }
 }
-/// Recently launched programs for the empty search box while pins live in the side dock,
+/// Recently opened items for the empty search box while pins live in the side dock,
 /// newest first. Pinned ones are left out because the dock already shows them.
 #[tauri::command]
-pub fn get_recent_apps(limit: usize) -> Vec<search::SearchResult> {
+pub fn get_recent_items(limit: usize) -> Vec<search::SearchResult> {
     let pinned: std::collections::HashSet<String> =
         pins::load_pins().into_iter().map(|p| p.path).collect();
     crate::frecency::recent_ids()
         .iter()
         .filter(|id| !pinned.contains(*id))
-        .filter_map(|id| indexer::program_result(id))
+        .filter_map(|id| indexer::file_result(id))
         .take(limit.min(50))
         .collect()
 }

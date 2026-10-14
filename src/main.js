@@ -2059,8 +2059,8 @@ async function performSearch(query) {
     const response = await invoke("search_all", { query });
     if (myId !== currentSearchId) return;
     if (!query.trim() && !pinsInList()) {
-      // The pins live in the side dock, so the empty box lists recently opened programs.
-      response.results = await invoke("get_recent_apps", { limit: 8 }).catch(() => []);
+      // The pins live in the side dock, so the empty box lists recently opened items.
+      response.results = await invoke("get_recent_items", { limit: 8 }).catch(() => []);
       if (myId !== currentSearchId) return;
     }
     allResults = response.results;
