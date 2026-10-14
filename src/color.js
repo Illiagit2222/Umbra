@@ -91,11 +91,10 @@ function colorCardHtml(c) {
     .join("");
   return `
     <div class="cc-preview">
-      <div class="cc-shades">
-        <span style="background:${colorToHex(colorShade(c, 0.25))}"></span>
-        <span style="background:${hex}"></span>
-        <span style="background:${colorToHex(colorShade(c, -0.25))}"></span>
-      </div>
+      <div class="cc-shades">${[0.25, 0, -0.25].map((k) => {
+        const shade = colorToHex(colorShade(c, k));
+        return `<button class="cc-shade" data-hex="${shade}" style="background:${shade}" title="${shade}"></button>`;
+      }).join("")}</div>
       <div class="cc-swatch" style="background:${hex}" data-copy="${hex}" title="Click or press Enter to copy ${hex}"></div>
     </div>
     <div class="cc-info">
@@ -176,7 +175,8 @@ function colorInit() {
   specialContent.addEventListener("click", (e) => {
     const card = e.target.closest(".color-card");
     if (!card) return;
-    const chip = e.target.closest(".cc-chip");
+    // History chips and the lighter / darker shades both switch the card to that colour.
+    const chip = e.target.closest(".cc-chip, .cc-shade");
     if (chip) return colorSetQuery(chip.dataset.hex);
     if (e.target.closest(".cc-dropper")) {
       e.stopPropagation();

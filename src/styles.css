@@ -805,14 +805,21 @@ html[data-border-pos="outer"] :is(#search-box, .settings-card, #content-menu, #c
   flex-direction: column;
   width: 23px;
 }
-.cc-shades span {
+.cc-shade {
   flex: 1;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
 }
-.cc-shades span:first-child {
+.cc-shade:first-child {
   border-top-left-radius: 8px;
 }
-.cc-shades span:last-child {
+.cc-shade:last-child {
   border-bottom-left-radius: 8px;
+}
+.cc-shade:hover {
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.35);
 }
 .cc-swatch {
   flex: 1;
