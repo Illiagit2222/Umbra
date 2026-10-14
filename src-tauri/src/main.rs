@@ -65,6 +65,7 @@ fn main() {
             indexer::init_index_with_progress(app.handle().clone());
             let window = app.get_webview_window("main").unwrap();
             remove_sysmenu(&window);
+            crate::keyboard_hook::guard_system_menu(&window);
             if let Some((x, y)) = config::pinned_position() {
                 let _ = window.set_position(tauri::PhysicalPosition::new(x, y));
             }
