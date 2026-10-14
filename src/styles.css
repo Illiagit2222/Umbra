@@ -1945,3 +1945,31 @@ body > .result-item.pin-drag-copy {
     transition: none;
   }
 }
+/* Keyboard focus from keynav.js: looks like the mouse hover it stands in for. */
+.settings-row.kbd-focus,
+.ctx-item.kbd-focus {
+  background: var(--card-hover);
+}
+#settings-section .kbd-focus:not(.settings-row) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.dock-tile.kbd-focus {
+  background: var(--card-selected);
+}
+html[data-pins="left"] .dock-tile.kbd-focus {
+  padding-left: 18px;
+}
+html[data-pins="right"] .dock-tile.kbd-focus {
+  padding-right: 18px;
+}
+.dock-tile.kbd-focus .dock-label {
+  max-width: 92px;
+  opacity: 1;
+}
+html[data-pins="left"] .dock-tile.kbd-focus .dock-label {
+  margin-right: 18px;
+}
+html[data-pins="right"] .dock-tile.kbd-focus .dock-label {
+  margin-left: 18px;
+}
